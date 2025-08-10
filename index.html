@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดเก็บข้อความที่ใช้บ่อย</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Noto Sans Thai', sans-serif; }
+        .snippet-card:hover { transform: translateY(-2px); }
+        .category-badge { transition: all 0.2s ease; }
+        .search-highlight { background-color: #fef3c7; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">📝 จัดเก็บข้อความที่ใช้บ่อย</h1>
+            
+            <!-- Add New Snippet -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div class="lg:col-span-2">
+                    <textarea id="newSnippetText" placeholder="พิมพ์ข้อความใหม่ที่ต้องการเก็บ..." 
+                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-24"></textarea>
+                </div>
+                <div class="space-y-3">
+                    <select id="categorySelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="ทั่วไป">ทั่วไป</option>
+                    </select>
+                    <button onclick="addSnippet()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                        ➕ เพิ่มข้อความ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category Management -->
+            <div class="flex flex-wrap gap-3 mb-4">
+                <button onclick="showCategoryModal()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    🏷️ จัดการหมวดหมู่
+                </button>
+                <div id="categoryFilters" class="flex flex-wrap gap-2">
+                    <button onclick="filterByCategory('all')" class="category-filter active bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        ทั้งหมด
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Sort -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="searchInput" placeholder="🔍 ค้นหาข้อความ..." 
+                    class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    oninput="searchSnippets()">
+                <select id="sortSelect" onchange="sortSnippets()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="usage">เรียงตาม: ใช้บ่อย</option>
+                    <option value="updated">เรียงตาม: อัปเดตล่าสุด</option>
+                    <option value="name">เรียงตาม: ชื่อ A-Z</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Snippets List -->
+            <div class="lg:col-span-2">
+                <div id="snippetsList" class="space-y-4">
+                    <!-- Snippets will be rendered here -->
+                </div>
+                <div id="noResults" class="hidden text-center py-12 text-gray-500">
+                    <div class="text-6xl mb-4">📭</div>
+                    <p class="text-xl">ไม่พบข้อความที่ค้นหา</p>
+                </div>
+            </div>
+
+            <!-- Paste Area -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg p-6 sticky top-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📋 พื้นที่วาง/เขียน</h3>
+                    <textarea id="pasteArea" placeholder="กดปุ่ม 'วาง' จากการ์ดข้อความ หรือพิมพ์ข้อความใหม่ที่นี่..." 
+                        class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none h-64"></textarea>
+                    <div class="mt-4 space-y-2">
+                        <button onclick="copyFromPasteArea()" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            📋 คัดลอกข้อความ
+                        </button>
+                        <button onclick="clearPasteArea()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            🗑️ ล้างข้อความ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="categoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-xl font-semibold mb-4">🏷️ จัดการหมวดหมู่</h3>
+            
+            <!-- Add Category -->
+            <div class="mb-4">
+                <input type="text" id="newCategoryName" placeholder="ชื่อหมวดหมู่ใหม่" 
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2">
+                <button onclick="addCategory()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                    ➕ เพิ่มหมวดหมู่
+                </button>
+            </div>
+
+            <!-- Category List -->
+            <div id="categoryList" class="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                <!-- Categories will be rendered here -->
+            </div>
+
+            <button onclick="closeCategoryModal()" class="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+                ปิด
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Snippet Modal -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
+            <h3 class="text-xl font-semibold mb-4">✏️ แก้ไขข้อความ</h3>
+            <textarea id="editSnippetText" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none h-32 mb-4"></textarea>
+            <select id="editCategorySelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-4">
+                <option value="ทั่วไป">ทั่วไป</option>
+            </select>
+            <div class="flex gap-3">
+                <button onclick="saveEdit()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                    💾 บันทึก
+                </button>
+                <button onclick="closeEditModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+                    ยกเลิก
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data storage
+        let snippets = JSON.parse(localStorage.getItem('textSnippets')) || [];
+        let categories = JSON.parse(localStorage.getItem('categories')) || ['ทั่วไป'];
+        let currentFilter = 'all';
+        let currentSort = 'usage';
+        let editingId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCategories();
+            renderCategoryFilters();
+            renderSnippets();
+        });
+
+        // Add new snippet
+        function addSnippet() {
+            const text = document.getElementById('newSnippetText').value.trim();
+            const category = document.getElementById('categorySelect').value;
+            
+            if (!text) {
+                alert('กรุณาใส่ข้อความ');
+                return;
+            }
+
+            const snippet = {
+                id: Date.now(),
+                text: text,
+                category: category,
+                usageCount: 0,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+
+            snippets.push(snippet);
+            saveData();
+            document.getElementById('newSnippetText').value = '';
+            renderSnippets();
+        }
+
+        // Render snippets
+        function renderSnippets() {
+            const container = document.getElementById('snippetsList');
+            const noResults = document.getElementById('noResults');
+            
+            let filteredSnippets = [...snippets];
+            
+            // Apply category filter
+            if (currentFilter !== 'all') {
+                filteredSnippets = filteredSnippets.filter(s => s.category === currentFilter);
+            }
+            
+            // Apply search filter
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (searchTerm) {
+                filteredSnippets = filteredSnippets.filter(s => 
+                    s.text.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Apply sorting
+            filteredSnippets.sort((a, b) => {
+                switch (currentSort) {
+                    case 'usage':
+                        return b.usageCount - a.usageCount;
+                    case 'updated':
+                        return new Date(b.updatedAt) - new Date(a.updatedAt);
+                    case 'name':
+                        return a.text.localeCompare(b.text, 'th');
+                    default:
+                        return 0;
+                }
+            });
+
+            if (filteredSnippets.length === 0) {
+                container.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            
+            container.innerHTML = filteredSnippets.map(snippet => `
+                <div class="snippet-card bg-white rounded-lg shadow-md p-4 transition-all duration-200 hover:shadow-lg">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="category-badge bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                                ${snippet.category}
+                            </span>
+                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                                ใช้ ${snippet.usageCount} ครั้ง
+                            </span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editSnippet(${snippet.id})" class="text-blue-600 hover:text-blue-800 p-1 rounded" title="แก้ไข">
+                                ✏️
+                            </button>
+                            <button onclick="copySnippet(${snippet.id})" class="text-green-600 hover:text-green-800 p-1 rounded" title="คัดลอก">
+                                📋
+                            </button>
+                            <button onclick="pasteSnippet(${snippet.id})" class="text-purple-600 hover:text-purple-800 p-1 rounded" title="วาง">
+                                📝
+                            </button>
+                            <button onclick="deleteSnippet(${snippet.id})" class="text-red-600 hover:text-red-800 p-1 rounded" title="ลบ">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-gray-800 leading-relaxed ${searchTerm ? 'search-highlight-text' : ''}">${highlightSearch(snippet.text, searchTerm)}</p>
+                    <div class="text-xs text-gray-500 mt-2">
+                        อัปเดต: ${new Date(snippet.updatedAt).toLocaleDateString('th-TH')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Highlight search terms
+        function highlightSearch(text, searchTerm) {
+            if (!searchTerm) return text;
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            return text.replace(regex, '<span class="search-highlight">$1</span>');
+        }
+
+        // Copy snippet to clipboard
+        function copySnippet(id) {
+            const snippet = snippets.find(s => s.id === id);
+            if (snippet) {
+                navigator.clipboard.writeText(snippet.text).then(() => {
+                    snippet.usageCount++;
+                    snippet.updatedAt = new Date().toISOString();
+                    saveData();
+                    renderSnippets();
+                    showToast('คัดลอกแล้ว! 📋');
+                });
+            }
+        }
+
+        // Paste snippet to paste area
+        function pasteSnippet(id) {
+            const snippet = snippets.find(s => s.id === id);
+            if (snippet) {
+                document.getElementById('pasteArea').value = snippet.text;
+                document.getElementById('pasteArea').focus();
+                snippet.usageCount++;
+                snippet.updatedAt = new Date().toISOString();
+                saveData();
+                renderSnippets();
+                showToast('วางข้อความแล้ว! 📝');
+            }
+        }
+
+        // Edit snippet
+        function editSnippet(id) {
+            const snippet = snippets.find(s => s.id === id);
+            if (snippet) {
+                editingId = id;
+                document.getElementById('editSnippetText').value = snippet.text;
+                document.getElementById('editCategorySelect').value = snippet.category;
+                document.getElementById('editModal').classList.remove('hidden');
+            }
+        }
+
+        // Save edit
+        function saveEdit() {
+            const text = document.getElementById('editSnippetText').value.trim();
+            const category = document.getElementById('editCategorySelect').value;
+            
+            if (!text) {
+                alert('กรุณาใส่ข้อความ');
+                return;
+            }
+
+            const snippet = snippets.find(s => s.id === editingId);
+            if (snippet) {
+                snippet.text = text;
+                snippet.category = category;
+                snippet.updatedAt = new Date().toISOString();
+                saveData();
+                renderSnippets();
+                closeEditModal();
+                showToast('แก้ไขแล้ว! ✏️');
+            }
+        }
+
+        // Delete snippet
+        function deleteSnippet(id) {
+            if (confirm('ต้องการลบข้อความนี้หรือไม่?')) {
+                snippets = snippets.filter(s => s.id !== id);
+                saveData();
+                renderSnippets();
+                showToast('ลบแล้ว! 🗑️');
+            }
+        }
+
+        // Category management
+        function addCategory() {
+            const name = document.getElementById('newCategoryName').value.trim();
+            if (!name) {
+                alert('กรุณาใส่ชื่อหมวดหมู่');
+                return;
+            }
+            if (categories.includes(name)) {
+                alert('หมวดหมู่นี้มีอยู่แล้ว');
+                return;
+            }
+            
+            categories.push(name);
+            saveData();
+            renderCategories();
+            renderCategoryFilters();
+            document.getElementById('newCategoryName').value = '';
+            showToast('เพิ่มหมวดหมู่แล้ว! 🏷️');
+        }
+
+        function deleteCategory(name) {
+            if (name === 'ทั่วไป') {
+                alert('ไม่สามารถลบหมวดหมู่ "ทั่วไป" ได้');
+                return;
+            }
+            
+            if (confirm(`ต้องการลบหมวดหมู่ "${name}" หรือไม่?\nข้อความในหมวดหมู่นี้จะถูกย้ายไป "ทั่วไป"`)) {
+                // Move snippets to default category
+                snippets.forEach(snippet => {
+                    if (snippet.category === name) {
+                        snippet.category = 'ทั่วไป';
+                    }
+                });
+                
+                categories = categories.filter(c => c !== name);
+                saveData();
+                renderCategories();
+                renderCategoryFilters();
+                renderSnippets();
+                showToast('ลบหมวดหมู่แล้ว! 🗑️');
+            }
+        }
+
+        function renameCategory(oldName) {
+            const newName = prompt('ชื่อหมวดหมู่ใหม่:', oldName);
+            if (!newName || newName === oldName) return;
+            
+            if (categories.includes(newName)) {
+                alert('หมวดหมู่นี้มีอยู่แล้ว');
+                return;
+            }
+            
+            // Update category name
+            const index = categories.indexOf(oldName);
+            categories[index] = newName;
+            
+            // Update snippets
+            snippets.forEach(snippet => {
+                if (snippet.category === oldName) {
+                    snippet.category = newName;
+                }
+            });
+            
+            saveData();
+            renderCategories();
+            renderCategoryFilters();
+            renderSnippets();
+            showToast('เปลี่ยนชื่อแล้ว! ✏️');
+        }
+
+        // Render functions
+        function renderCategories() {
+            const selects = [document.getElementById('categorySelect'), document.getElementById('editCategorySelect')];
+            const categoryList = document.getElementById('categoryList');
+            
+            selects.forEach(select => {
+                select.innerHTML = categories.map(cat => 
+                    `<option value="${cat}">${cat}</option>`
+                ).join('');
+            });
+            
+            if (categoryList) {
+                categoryList.innerHTML = categories.map(cat => `
+                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <span class="font-medium">${cat}</span>
+                        <div class="flex gap-1">
+                            <button onclick="renameCategory('${cat}')" class="text-blue-600 hover:text-blue-800 p-1" title="เปลี่ยนชื่อ">
+                                ✏️
+                            </button>
+                            ${cat !== 'ทั่วไป' ? `
+                                <button onclick="deleteCategory('${cat}')" class="text-red-600 hover:text-red-800 p-1" title="ลบ">
+                                    🗑️
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = `
+                <button onclick="filterByCategory('all')" class="category-filter ${currentFilter === 'all' ? 'active bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1 rounded-full text-sm font-medium transition-colors">
+                    ทั้งหมด
+                </button>
+                ${categories.map(cat => `
+                    <button onclick="filterByCategory('${cat}')" class="category-filter ${currentFilter === cat ? 'active bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} px-3 py-1 rounded-full text-sm font-medium transition-colors">
+                        ${cat}
+                    </button>
+                `).join('')}
+            `;
+        }
+
+        // Filter and search functions
+        function filterByCategory(category) {
+            currentFilter = category;
+            renderCategoryFilters();
+            renderSnippets();
+        }
+
+        function searchSnippets() {
+            renderSnippets();
+        }
+
+        function sortSnippets() {
+            currentSort = document.getElementById('sortSelect').value;
+            renderSnippets();
+        }
+
+        // Paste area functions
+        function copyFromPasteArea() {
+            const text = document.getElementById('pasteArea').value;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('คัดลอกแล้ว! 📋');
+                });
+            }
+        }
+
+        function clearPasteArea() {
+            document.getElementById('pasteArea').value = '';
+        }
+
+        // Modal functions
+        function showCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('hidden');
+            renderCategories();
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            editingId = null;
+        }
+
+        // Utility functions
+        function saveData() {
+            localStorage.setItem('textSnippets', JSON.stringify(snippets));
+            localStorage.setItem('categories', JSON.stringify(categories));
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 2000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                addSnippet();
+            }
+        });
+
+        // Close modals on escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCategoryModal();
+                closeEditModal();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96cea120e61845d0',t:'MTc1NDgxOTg1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
