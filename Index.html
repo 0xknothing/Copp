@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Snippet Manager Pro — ข้อความบ่อย / คัดลอก-วาง / หมวดหมู่ (IndexedDB)</title>
+<style>
+  :root{
+    --bg:#0f1220;--panel:#171a2b;--muted:#8a92b2;--text:#eef1ff;--accent:#7c9cff;--accent-2:#4be0a3;--danger:#ff6b6b;--warn:#ffb020;--border:#262a44;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,'TH Sarabun New',Tahoma; background:linear-gradient(180deg,#0c1020,#090c18); color:var(--text)}
+  .app{display:grid;grid-template-columns:260px 1fr 360px; gap:12px; padding:12px; height:100%}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .col{display:flex;flex-direction:column;min-height:0}
+  header{display:flex;align-items:center;gap:10px; padding:12px 14px; border-bottom:1px solid var(--border)}
+  header h2{margin:0;font-size:16px;letter-spacing:.3px}
+  .btn{border:1px solid var(--border);background:#1e2340;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+  .btn:hover{filter:brightness(1.12)}
+  .btn.acc{background:linear-gradient(180deg,#6a83ff,#5670ff);border:none}
+  .btn.sub{background:#1b243b}
+  .btn.ghost{background:transparent}
+  .btn.danger{background:#3a1e27;border:1px solid #5a2b36;color:#ffc9c9}
+  .btn.small{padding:6px 8px;font-size:12px;border-radius:8px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  .muted{color:var(--muted)}
+  .badge{background:#121630;border:1px solid var(--border);padding:6px 10px;border-radius:999px;font-size:12px;color:#c9d1ff}
+
+  /* Left: Categories */
+  .cats{padding:10px}
+  .cats .row{display:flex;gap:6px;margin-top:10px}
+  .cats input, .cats select{width:100%;padding:8px;border-radius:10px;border:1px solid var(--border);background:#121630;color:var(--text)}
+  .cat-list{overflow:auto;padding:6px 6px 10px}
+  .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#121630;border:1px solid var(--border);padding:10px 10px;border-radius:10px;margin:6px 0}
+  .pill.active{outline:2px solid var(--accent)}
+
+  /* Center: Snippet list */
+  .snipbar{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid var(--border)}
+  .snipbar input{flex:1;padding:10px;border-radius:10px;border:1px solid var(--border);background:#121630;color:var(--text)}
+  .snipbar .right{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .sniplist{overflow:auto;padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .snip{display:flex;flex-direction:column;gap:10px;background:#10142b;border:1px solid var(--border);border-radius:12px;padding:12px}
+  .snip .head{display:flex;align-items:center;gap:8px}
+  .snip .title{font-weight:600; flex:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+  .snip .meta{display:flex;gap:6px;font-size:12px;color:var(--muted)}
+  .snip .content{white-space:pre-wrap;background:#0b1024;border-radius:8px;padding:10px;border:1px dashed #2a2f55;max-height:150px;overflow:auto}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:11px;background:#151a33;border:1px solid #242a52;padding:4px 8px;border-radius:99px;color:#c9d1ff}
+  .pagi{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:10px;border-top:1px solid var(--border)}
+  .pagi input{width:70px;text-align:center;background:#121630;border:1px solid var(--border);color:var(--text);border-radius:10px;padding:6px 8px}
+  .pagi .btn{padding:6px 10px}
+
+  /* Right: Compose/Paste */
+  .editor{padding:10px;display:flex;flex-direction:column;gap:10px}
+  .editor textarea{flex:1;min-height:220px;background:#0b1024;border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text)}
+  .rows{display:flex;gap:8px}
+  .rows > *{flex:1}
+
+  /* Modal */
+  dialog{border:none;border-radius:14px;padding:0;background:transparent}
+  .modal{min-width:560px; background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .modal header{background:#1b1f38}
+  .modal .body{padding:14px;display:flex;flex-direction:column;gap:10px}
+  .modal .body input,.modal .body textarea,.modal .body select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:#121630;color:var(--text)}
+  .modal .foot{display:flex;justify-content:flex-end;gap:8px;padding:10px;border-top:1px solid var(--border)}
+
+  /* Responsive (mobile-first add-ons) */
+  .col>header{position:sticky;top:0;background:#1b1f38;z-index:5}
+  .btn.small{padding:8px 10px;font-size:13px;border-radius:10px}
+  @media (hover:none){ .btn, input, select, textarea{min-height:44px} }
+  .app{height:100dvh;grid-auto-rows:minmax(0,1fr)}
+  @media (max-width: 1100px){.app{grid-template-columns:1fr;}.side-left,.side-right{order:2}.center{order:1}}
+  @media (max-width: 860px){
+    .app{grid-template-columns:1fr;gap:8px;padding:8px}
+    .sniplist{grid-template-columns:1fr}
+    .modal{min-width:92vw}
+    .editor textarea{min-height:40vh}
+    .snip .content{max-height:220px}
+    .cats input, .cats select, .snipbar input, .snipbar select{font-size:16px}
+  }
+  @media (max-width: 480px){
+    dialog::backdrop{background:rgba(0,0,0,.5)}
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <!-- Left: Categories -->
+  <section class="card col side-left" id="categories">
+    <header>
+      <h2>หมวดหมู่</h2>
+      <div class="toolbar" style="margin-left:auto">
+        <button class="btn small" id="btnAddCat">+ เพิ่มหมวด</button>
+        <button class="btn small sub" id="btnRenameCat">เปลี่ยนชื่อ</button>
+        <button class="btn small danger" id="btnDeleteCat">ลบ</button>
+      </div>
+    </header>
+    <div class="cats">
+      <div class="row">
+        <input id="catSearch" placeholder="ค้นหาหมวด..." />
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <span class="muted" id="catStats">—</span>
+        <span class="badge" id="catCountBadge">0 หมวด</span>
+      </div>
+    </div>
+    <div class="cat-list" id="catList"></div>
+  </section>
+
+  <!-- Center: Snippets -->
+  <section class="card col center" id="snippets">
+    <div class="snipbar">
+      <input id="q" placeholder="ค้นหาข้อความ / ชื่อ / #แท็ก" />
+      <div class="right">
+        <select id="sort">
+          <option value="-uses">เรียง: ใช้บ่อย → น้อย</option>
+          <option value="uses">เรียง: ใช้น้อย → บ่อย</option>
+          <option value="title">เรียง: ชื่อ A→Z</option>
+          <option value="-updated">เรียง: อัปเดตล่าสุด</option>
+          <option value="created">เรียง: เก่าสุดก่อน</option>
+        </select>
+        <select id="pageSize">
+          <option value="24">24/หน้า</option>
+          <option value="36">36/หน้า</option>
+          <option value="60">60/หน้า</option>
+          <option value="100">100/หน้า</option>
+        </select>
+        <button class="btn acc" id="btnNew">+ สร้างข้อความ</button>
+        <!-- ปุ่มส่งออกถูกลบ -->
+        <input type="file" id="fileImport" accept="application/json" style="display:none" />
+        <button class="btn sub" id="btnImport">นำเข้า</button>
+      </div>
+    </div>
+    <div class="sniplist" id="snipList"></div>
+    <div class="pagi" id="pagi">
+      <button class="btn small" id="prevPage">ก่อนหน้า</button>
+      <span id="pageInfo" class="muted">หน้า 1/1</span>
+      <button class="btn small" id="nextPage">ถัดไป</button>
+      <input id="jumpPage" placeholder="ไปหน้า..." />
+      <button class="btn small" id="goPage">ไป</button>
+    </div>
+  </section>
+
+  <!-- Right: Compose/Paste Target -->
+  <section class="card col side-right">
+    <header>
+      <h2>พื้นที่วาง/เขียน</h2>
+      <div class="toolbar" style="margin-left:auto">
+        <button class="btn small" id="btnPasteHere">วางที่นี่ (Ctrl+V)</button>
+        <button class="btn small" id="btnClear">ล้าง</button>
+      </div>
+    </header>
+    <div class="editor">
+      <div class="rows">
+        <input id="composeTitle" placeholder="หัวข้อ (ไม่บังคับ)" />
+        <select id="composeCat"></select>
+      </div>
+      <textarea id="target" placeholder="คลิกที่นี่เพื่อให้ปุ่ม &quot;วาง&quot; ส่งข้อความมาที่กล่องนี้"></textarea>
+      <div class="toolbar">
+        <button class="btn acc" id="btnSaveAs">บันทึกเป็นสเนิปใหม่</button>
+        <button class="btn" id="btnCopyAll">คัดลอกทั้งหมด</button>
+      </div>
+      <div class="muted">ทิป: ดับเบิลคลิกการ์ดสเนิปเพื่อคัดลอกทันที • Alt+C คัดลอก • Alt+V วางสู่ช่องที่โฟกัส • รองรับมากกว่า <b>500+</b> ข้อความ และ <b>15+</b> หมวด</div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal: Create/Edit Snippet -->
+<dialog id="dlg">
+  <form method="dialog" class="modal">
+    <header>
+      <h2 id="dlgTitle">สร้างข้อความ</h2>
+    </header>
+    <div class="body">
+      <input id="fTitle" placeholder="ชื่อที่จดจำง่าย เช่น &quot;ทักทายลูกค้า&quot;" />
+      <div class="rows">
+        <select id="fCat"></select>
+        <input id="fTags" placeholder="แท็ก (คั่นด้วย ,)  — ไม่บังคับ" />
+      </div>
+      <textarea id="fContent" placeholder="ข้อความของคุณ..." rows="8"></textarea>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" value="cancel">ยกเลิก</button>
+      <button class="btn acc" id="btnDlgSave" value="ok">บันทึก</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* =====================================================
+   IndexedDB minimal helper (no external libs)
+===================================================== */
+const DB_NAME = 'snippet.manager.v2';
+const DB_VER  = 1;
+let db = null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('cats')){
+        const cats = db.createObjectStore('cats',{keyPath:'id'});
+        cats.createIndex('name','name',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('snips')){
+        const snips = db.createObjectStore('snips',{keyPath:'id'});
+        snips.createIndex('cat','cat',{unique:false});
+        snips.createIndex('updated','updated',{unique:false});
+        snips.createIndex('uses','uses',{unique:false});
+        snips.createIndex('title','title',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('meta')){
+        db.createObjectStore('meta',{keyPath:'key'});
+      }
+    };
+    req.onsuccess = ()=>{ db = req.result; resolve(db) };
+    req.onerror = ()=> reject(req.error);
+  });
+}
+function tx(store,mode='readonly'){ return db.transaction(store,mode).objectStore(store) }
+function getAll(store){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store).getAll(); r.onsuccess = ()=> resolve(r.result||[]); r.onerror = ()=> reject(r.error);
+  });
+}
+function put(store,val){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,'readwrite').put(val); r.onsuccess = ()=> resolve(true); r.onerror = ()=> reject(r.error);
+  });
+}
+function bulkPut(store, vals){
+  return new Promise((resolve,reject)=>{
+    const t = db.transaction(store,'readwrite'); const s = t.objectStore(store);
+    vals.forEach(v=>s.put(v));
+    t.oncomplete = ()=> resolve(true); t.onerror = ()=> reject(t.error);
+  });
+}
+function remove(store, key){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,'readwrite').delete(key); r.onsuccess = ()=> resolve(true); r.onerror=()=>reject(r.error);
+  });
+}
+function getMeta(key){
+  return new Promise((resolve,reject)=>{
+    const r = tx('meta').get(key); r.onsuccess = ()=> resolve(r.result?.value); r.onerror = ()=> reject(r.error);
+  });
+}
+function setMeta(key, value){
+  return put('meta', {key, value});
+}
+
+/* =====================================================
+   App State
+===================================================== */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const uid = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
+
+const state = {
+  cats: [], // {id,name}
+  snips: [], // {id,title,content,cat,tags:[],uses,created,updated}
+  activeCat: 'all',
+  editingId: null,
+  q: '',
+  sort: '-uses',
+  page: 1,
+  pageSize: 24
+};
+
+function timeAgo(ts){
+  if(!ts) return '-';
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return `${s}s`; const m=Math.floor(s/60); if(m<60) return `${m}m`; const h=Math.floor(m/60); if(h<24) return `${h}h`; const d=Math.floor(h/24); return `${d}d`;
+}
+function escapeHtml(str=''){ return String(str).replace(/[&<>"]/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s])) }
+
+/* =====================================================
+   Bootstrap & Seed
+===================================================== */
+async function bootstrap(){
+  await openDB();
+  const inited = await getMeta('inited');
+  if(!inited){
+    const initCats = [
+      {id:'all', name:'— ทั้งหมด —'},
+      {id:'quick', name:'ตอบกลับเร็ว'},
+      {id:'sales', name:'งานขาย'},
+      {id:'support', name:'ซัพพอร์ต'}
+    ];
+    const now = Date.now();
+    const initSnips = [
+      {id:uid(), title:'ทักทายลูกค้า', content:'สวัสดีค่ะ ติดต่อสอบถามข้อมูลเพิ่มเติมได้เลยนะคะ 😊', cat:'quick', tags:['greeting'], uses:12, created:now, updated:now},
+      {id:uid(), title:'ปิดการขาย', content:'ขอบคุณที่ไว้วางใจค่ะ เดี๋ยวจัดส่งให้ภายใน 24 ชม. พร้อมเลขพัสดุค่ะ', cat:'sales', tags:['closing'], uses:8, created:now, updated:now},
+      {id:uid(), title:'รับเรื่องซัพพอร์ต', content:'รับเรื่องให้แล้วนะคะ ทีมงานจะตรวจสอบและอัปเดตให้โดยเร็วค่ะ 🙏', cat:'support', tags:['support'], uses:5, created:now, updated:now},
+    ];
+    await bulkPut('cats', initCats);
+    await bulkPut('snips', initSnips);
+    await setMeta('inited', true);
+  }
+  state.cats = await getAll('cats');
+  if(!state.cats.find(c=>c.id==='all')){
+    await put('cats', {id:'all', name:'— ทั้งหมด —'});
+    state.cats = await getAll('cats');
+  }
+  state.snips = await getAll('snips');
+  $('#pageSize').value = String(state.pageSize);
+  renderAll();
+  $('#app').hidden = false;
+}
+
+/* =====================================================
+   Rendering
+===================================================== */
+function renderCats(){
+  const list = $('#catList');
+  const term = ($('#catSearch').value||'').toLowerCase();
+  list.innerHTML = '';
+  const cats = state.cats.slice().sort((a,b)=> (a.id==='all')?-1: a.name.localeCompare(b.name));
+  cats.forEach(cat => {
+    if(cat.id !== 'all' && term && !cat.name.toLowerCase().includes(term)) return;
+    const count = cat.id==='all' ? state.snips.length : state.snips.filter(s=>s.cat===cat.id).length;
+    const el = document.createElement('div');
+    el.className = 'pill' + (state.activeCat===cat.id?' active':'');
+    el.dataset.id = cat.id;
+    el.innerHTML = `<div><strong>${escapeHtml(cat.name)}</strong> <span class="muted">(${count})</span></div>
+      <div class="toolbar">
+        ${cat.id!=='all'?'<button class="btn small ghost act-rename">แก้ชื่อ</button>':''}
+        ${cat.id!=='all'?'<button class="btn small danger act-delete">ลบ</button>':''}
+      </div>`;
+    el.addEventListener('click', (e)=>{
+      if(e.target.closest('button')) return;
+      state.activeCat = cat.id; state.page=1; renderAll();
+    });
+    list.appendChild(el);
+  });
+  $('#catStats').textContent = `รวม ${state.snips.length} ข้อความ`;
+  $('#catCountBadge').textContent = `${state.cats.length} หมวด`;
+}
+
+function getFilteredSorted(){
+  let arr = state.snips.slice();
+  if(state.activeCat !== 'all') arr = arr.filter(s=>s.cat===state.activeCat);
+  if(state.q){
+    const t = state.q.toLowerCase();
+    arr = arr.filter(s => s.title.toLowerCase().includes(t) || s.content.toLowerCase().includes(t) || (s.tags||[]).some(x=>x.toLowerCase().includes(t)));
+  }
+  const sorter = state.sort;
+  arr.sort((a,b)=>{
+    if(sorter==='title') return a.title.localeCompare(b.title);
+    if(sorter==='-updated') return (b.updated||0)-(a.updated||0);
+    if(sorter==='created') return (a.created||0)-(b.created||0);
+    if(sorter==='uses') return (a.uses||0)-(b.uses||0);
+    if(sorter==='-uses') return (b.uses||0)-(a.uses||0);
+    return 0;
+  });
+  return arr;
+}
+
+function renderSnips(){
+  const wrap = $('#snipList');
+  wrap.innerHTML='';
+  const all = getFilteredSorted();
+  const pageSize = state.pageSize;
+  const pages = Math.max(1, Math.ceil(all.length / pageSize));
+  if(state.page>pages) state.page=pages;
+  const start = (state.page-1)*pageSize;
+  const view = all.slice(start, start+pageSize);
+
+  view.forEach(s=>{
+    const card = document.createElement('div');
+    card.className = 'snip';
+    card.dataset.id = s.id;
+    const catName = (state.cats.find(c=>c.id===s.cat)||{}).name || 'ไม่ทราบหมวด';
+    card.innerHTML = `
+      <div class="head">
+        <div class="title" title="${escapeHtml(s.title)}">${escapeHtml(s.title)}</div>
+        <button class="btn small sub act-copy" title="คัดลอก">คัดลอก</button>
+        <button class="btn small act-paste" title="วาง">วาง</button>
+        <button class="btn small ghost act-edit" title="แก้ไข">แก้ไข</button>
+        <button class="btn small danger act-del" title="ลบ">ลบ</button>
+      </div>
+      <div class="meta">
+        <span>หมวด: ${escapeHtml(catName)}</span>
+        <span>ใช้บ่อย: ${s.uses||0}</span>
+        <span>อัปเดต: ${timeAgo(s.updated)}</span>
+      </div>
+      <div class="content">${escapeHtml(s.content)}</div>
+      <div class="chips">${(s.tags||[]).map(t=>`<span class="chip">#${escapeHtml(t)}</span>`).join('')}</div>
+    `;
+    card.addEventListener('dblclick',()=> doCopy(s));
+    wrap.appendChild(card);
+  });
+
+  const pagesTotal = Math.max(1, Math.ceil(all.length / pageSize));
+  $('#pageInfo').textContent = `หน้า ${state.page}/${pagesTotal}`;
+}
+
+function renderComposeCats(){
+  const selects = [$('#composeCat'), $('#fCat')];
+  selects.forEach(sel=>{ sel.innerHTML = state.cats.filter(c=>c.id!=='all').map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('') });
+}
+
+function renderAll(){ renderCats(); renderSnips(); renderComposeCats() }
+
+/* =====================================================
+   Actions
+===================================================== */
+function openEditor(existing=null){
+  state.editingId = existing? existing.id : null;
+  $('#dlgTitle').textContent = existing? 'แก้ไขข้อความ' : 'สร้างข้อความ';
+  $('#fTitle').value = existing? existing.title : '';
+  $('#fContent').value = existing? existing.content : '';
+  $('#fCat').value = existing? existing.cat : ($('#fCat').options[0]?.value||'');
+  $('#fTags').value = existing? (existing.tags||[]).join(',') : '';
+  $('#dlg').showModal();
+}
+
+async function saveEditor(){
+  const title = $('#fTitle').value.trim()||'(ไม่มีชื่อ)';
+  const content = $('#fContent').value;
+  const cat = $('#fCat').value || (state.cats.find(c=>c.id!=='all')?.id);
+  const tags = $('#fTags').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(state.editingId){
+    const idx = state.snips.findIndex(x=>x.id===state.editingId);
+    if(idx>-1){
+      const updated = {...state.snips[idx], title, content, cat, tags, updated:Date.now()};
+      state.snips[idx] = updated;
+      await put('snips', updated);
+    }
+  }else{
+    const s = {id:uid(), title, content, cat, tags, uses:0, created:Date.now(), updated:Date.now()};
+    state.snips.unshift(s);
+    await put('snips', s);
+  }
+  renderAll(); $('#dlg').close();
+}
+
+async function doCopy(s){
+  try{ await navigator.clipboard.writeText(s.content); toast('คัดลอกแล้ว'); await bumpUse(s); }
+  catch{ toast('เบราว์เซอร์บล็อกการคัดลอก'); }
+}
+async function doPaste(s){
+  const target = getPasteTarget();
+  if(!target){ toast('คลิกไปที่ช่องข้อความทางขวาก่อน'); return }
+  insertAtCursor(target, s.content);
+  await bumpUse(s);
+  toast('วางข้อความแล้ว');
+}
+async function bumpUse(s){
+  s.uses=(s.uses||0)+1; s.updated=Date.now();
+  await put('snips', s);
+  renderSnips();
+}
+
+function getPasteTarget(){
+  const t = $('#target');
+  const el = document.activeElement;
+  if(el && (el.isContentEditable || el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && /text|search|url|email|tel/.test(el.type)))) return el;
+  return t;
+}
+
+function insertAtCursor(input, text){
+  if(input.isContentEditable){
+    const sel = window.getSelection();
+    if(!sel || !sel.rangeCount){ input.append(text); return }
+    const range = sel.getRangeAt(0); range.deleteContents(); range.insertNode(document.createTextNode(text));
+    range.collapse(false); sel.removeAllRanges(); sel.addRange(range);
+  }else if(typeof input.selectionStart === 'number'){
+    const s = input.selectionStart, e=input.selectionEnd, val=input.value;
+    input.value = val.slice(0,s)+text+val.slice(e);
+    input.selectionStart = input.selectionEnd = s + text.length;
+    input.dispatchEvent(new Event('input'));
+  }else{
+    input.value += text;
+  }
+  input.focus();
+}
+
+function toast(msg){
+  let el = $('#toast');
+  if(!el){ el = document.createElement('div'); el.id='toast'; Object.assign(el.style,{position:'fixed',bottom:'16px',left:'50%',transform:'translateX(-50%)',background:'#0b1024',border:'1px solid #2a2f55',padding:'10px 14px',borderRadius:'10px',boxShadow:'0 10px 30px rgba(0,0,0,.4)',zIndex:9999}); document.body.appendChild(el); }
+  el.textContent = msg; el.style.opacity='1';
+  clearTimeout(toast._t); toast._t = setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; }, 1200);
+}
+
+/* =====================================================
+   Category helpers
+===================================================== */
+async function addCategory(name){
+  const id = uid();
+  const cat = {id, name};
+  state.cats.push(cat);
+  await put('cats', cat);
+  state.activeCat = id;
+  renderAll();
+}
+async function renameCategory(id, name){
+  const c = state.cats.find(x=>x.id===id); if(!c) return;
+  c.name = name;
+  await put('cats', c);
+  renderAll();
+}
+async function deleteCategory(id){
+  if(id==='all') return;
+  const fallback = state.cats.find(c=>c.id!=='all' && c.id!==id)?.id || 'all';
+  const affected = state.snips.filter(s=>s.cat===id);
+  affected.forEach(s=> s.cat = fallback);
+  if(affected.length) await bulkPut('snips', affected);
+  state.cats = state.cats.filter(c=>c.id!==id);
+  await remove('cats', id);
+  if(state.activeCat===id) state.activeCat='all';
+  renderAll();
+}
+
+/* =====================================================
+   Import (stream-safe for 500+)
+===================================================== */
+async function importJsonFile(file){
+  const text = await file.text();
+  const data = JSON.parse(text);
+  if(!Array.isArray(data.snips) || !Array.isArray(data.cats)) throw new Error('ไฟล์ไม่ถูกต้อง');
+  const all = {id:'all', name:'— ทั้งหมด —'};
+  const cats = [all, ...data.cats.filter(c=>c.id!=='all')];
+  state.cats = cats;
+  state.snips = data.snips.map(s=>({
+    id: s.id||uid(),
+    title: s.title||'(ไม่มีชื่อ)',
+    content: String(s.content||''),
+    cat: cats.some(c=>c.id===s.cat)? s.cat : (cats[1]?.id || 'all'),
+    tags: Array.isArray(s.tags)? s.tags : [],
+    uses: Number(s.uses||0),
+    created: s.created||Date.now(),
+    updated: s.updated||Date.now()
+  }));
+  await bulkPut('cats', state.cats);
+  await bulkPut('snips', state.snips);
+  renderAll(); toast('นำเข้าสำเร็จ');
+}
+
+/* =====================================================
+   Events & UI wiring
+===================================================== */
+function debounce(fn, wait=200){
+  let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait) };
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  $('#btnNew').addEventListener('click', ()=> openEditor());
+  // ปุ่มส่งออกถูกลบ จึงไม่ผูกอีเวนต์
+  $('#btnImport').addEventListener('click', ()=> $('#fileImport').click());
+  $('#fileImport').addEventListener('change', e=>{ const f=e.target.files[0]; if(f) importJsonFile(f).catch(err=>alert('นำเข้าไม่สำเร็จ: '+err.message)) });
+
+  $('#snipList').addEventListener('click', (e)=>{
+    const card = e.target.closest('.snip'); if(!card) return; const id = card.dataset.id; const s = state.snips.find(x=>x.id===id);
+    if(e.target.closest('.act-copy')) return doCopy(s);
+    if(e.target.closest('.act-paste')) return doPaste(s);
+    if(e.target.closest('.act-edit')) return openEditor(s);
+    if(e.target.closest('.act-del')){ if(confirm('ลบรายการนี้?')){ state.snips = state.snips.filter(x=>x.id!==id); remove('snips', id).then(()=>renderSnips()); } }
+  });
+
+  $('#btnAddCat').addEventListener('click', async ()=>{
+    const name = prompt('ชื่อหมวดหมู่ใหม่'); if(name) await addCategory(name.trim());
+  });
+  $('#btnRenameCat').addEventListener('click', async ()=>{
+    const id = state.activeCat; if(id==='all') return alert('เลือกหมวดที่สร้างเองก่อน');
+    const cur = state.cats.find(c=>c.id===id); const name = prompt('เปลี่ยนชื่อหมวดหมู่', cur?.name||''); if(name) await renameCategory(id, name.trim());
+  });
+  $('#btnDeleteCat').addEventListener('click', async ()=>{
+    const id = state.activeCat; if(id==='all') return alert('หมวดนี้ลบไม่ได้');
+    if(confirm('ลบหมวดหมู่และย้ายสเนิปไปหมวดอื่น?')) await deleteCategory(id);
+  });
+
+  $('#catSearch').addEventListener('input', debounce(renderCats, 100));
+
+  $('#q').addEventListener('input', debounce((e)=>{ state.q = e.target.value; state.page=1; renderSnips(); }, 120));
+  $('#sort').addEventListener('change', (e)=>{ state.sort = e.target.value; state.page=1; renderSnips(); });
+  $('#pageSize').addEventListener('change', (e)=>{ state.pageSize = parseInt(e.target.value,10)||24; state.page=1; renderSnips(); });
+  $('#prevPage').addEventListener('click', ()=>{ if(state.page>1){ state.page--; renderSnips(); }});
+  $('#nextPage').addEventListener('click', ()=>{ const total = Math.ceil(getFilteredSorted().length / state.pageSize); if(state.page<total){ state.page++; renderSnips(); }});
+  $('#goPage').addEventListener('click', ()=>{ const total = Math.max(1, Math.ceil(getFilteredSorted().length / state.pageSize)); const p = Math.max(1, Math.min(total, parseInt($('#jumpPage').value||'1',10))); state.page=p; renderSnips(); });
+
+  $('#btnPasteHere').addEventListener('click', ()=> $('#target').focus());
+  $('#btnClear').addEventListener('click', ()=> { $('#target').value=''; $('#target').focus() });
+  $('#btnCopyAll').addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText($('#target').value); toast('คัดลอกกล่องข้อความแล้ว'); }
+    catch{ toast('คัดลอกล้มเหลว'); }
+  });
+
+  $('#btnSaveAs').addEventListener('click', async ()=>{
+    const title = ($('#composeTitle').value||'(ไม่มีชื่อ)').trim();
+    const content = $('#target').value; if(!content) return alert('ยังไม่มีข้อความ');
+    const cat = $('#composeCat').value || (state.cats.find(c=>c.id!=='all')?.id);
+    const s = {id:uid(), title, content, cat, tags:[], uses:0, created:Date.now(), updated:Date.now()};
+    state.snips.unshift(s);
+    await put('snips', s);
+    renderAll(); toast('บันทึกเป็นสเนิปแล้ว');
+  });
+
+  $('#dlg').addEventListener('close', ()=>{ state.editingId=null });
+  $('#btnDlgSave').addEventListener('click', (e)=>{ e.preventDefault(); saveEditor() });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.altKey && e.code==='KeyC'){
+      const sel = $('.snip:focus-within, .snip:hover') || $('.snip');
+      if(sel){ const s = state.snips.find(x=>x.id===sel.dataset.id); if(s){ doCopy(s); e.preventDefault(); }}
+    }
+    if(e.altKey && e.code==='KeyV'){
+      const sel = $('.snip:focus-within, .snip:hover') || $('.snip');
+      if(sel){ const s = state.snips.find(x=>x.id===sel.dataset.id); if(s){ doPaste(s); e.preventDefault(); }}
+    }
+  });
+
+  bootstrap();
+});
+</script>
+</body>
+</html>
