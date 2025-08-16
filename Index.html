@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>จัดเก็บข้อความที่ใช้บ่อย</title>
+<meta name="color-scheme" content="light dark">
+<style>
+  :root{
+    --bg:#eef3ff;            /* พื้นหลังนวล ๆ แบบในภาพ */
+    --card:#ffffff;          /* กล่องขาว */
+    --ink:#0d1b2a;           /* สีตัวอักษรหลัก */
+    --muted:#6b7a90;         /* ตัวอักษรรอง */
+    --blue:#1e63ff;          /* ปุ่มหลัก */
+    --blue-2:#1448c9;
+    --green:#18b069;         /* ปุ่มจัดการหมวด */
+    --green-2:#0c8e54;
+    --chip:#eef2ff;          /* แท็กกรอง */
+    --chip-on:#1e63ff;
+    --chip-ink:#23314d;
+    --border:#dbe4ff;        /* เส้นขอบบาง */
+    --shadow: 0 10px 30px rgba(29,51,120,.12);
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f1424; --card:#171c2e; --ink:#eaf0ff; --muted:#98a4c7;
+      --chip:#1b2240; --border:#223059; --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; font:15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Tahoma, "TH Sarabun New", sans-serif;
+    color:var(--ink); background:linear-gradient(180deg,var(--bg),#dfe7ff 600px);
+  }
+
+  .wrap{max-width:880px; margin:24px auto; padding:0 16px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px;}
+
+  /* Header */
+  .title{display:flex; align-items:center; gap:12px; margin:6px 0 18px}
+  .title i{font-size:28px}
+  .title h1{font-size:28px; line-height:1.2; margin:0}
+  .title small{display:block; color:var(--muted); font-weight:500}
+
+  /* Inputs */
+  .stack{display:grid; gap:14px}
+  .textarea{
+    width:100%; min-height:90px; padding:14px 14px 14px 14px;
+    border:1px solid var(--border); border-radius:12px; background:#fff0; color:inherit;
+  }
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  select, .select, input[type="text"]{
+    width:100%; padding:14px 42px 14px 14px; border:1px solid var(--border);
+    border-radius:12px; background:#fff0; color:inherit; appearance:none;
+  }
+  .select{position:relative}
+  .select:after{
+    content:"▾"; position:absolute; right:12px; top:50%; transform:translateY(-50%);
+    color:var(--muted); pointer-events:none; font-size:16px;
+  }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    padding:14px 18px; border-radius:12px; border:1px solid transparent;
+    font-weight:700; cursor:pointer; user-select:none; text-decoration:none;
+    transition:.15s transform ease, .15s box-shadow ease, .15s background-color ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--blue); color:#fff}
+  .btn-primary:hover{background:var(--blue-2)}
+  .btn-success{background:var(--green); color:#fff}
+  .btn-success:hover{background:var(--green-2)}
+  .btn-icon svg{width:18px; height:18px}
+
+  /* Chips */
+  .chips{display:flex; flex-wrap:wrap; gap:10px}
+  .chip{
+    padding:10px 14px; border-radius:999px; background:var(--chip); color:var(--chip-ink);
+    border:1px solid var(--border); cursor:pointer; font-weight:700; transition:.15s;
+  }
+  .chip.active{background:rgba(30,99,255,.12); border-color:var(--chip-on); color:var(--chip-on)}
+
+  /* Search + sort */
+  .searchbar{position:relative}
+  .searchbar input{padding-left:42px}
+  .searchbar .icon{position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:18px}
+
+  .sort{max-width:280px}
+  .bar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap}
+
+  /* List */
+  .list{margin-top:14px; display:grid; gap:12px}
+  .item{
+    background:linear-gradient(0deg,rgba(30,99,255,.06),rgba(30,99,255,.06)) padding-box, var(--card) border-box;
+    border:1px solid var(--border); border-radius:14px; padding:14px;
+    display:grid; gap:10px;
+  }
+  .item .meta{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  .badge{
+    background:var(--chip); border:1px solid var(--border); color:var(--chip-ink);
+    border-radius:999px; padding:6px 10px; font-weight:700; font-size:12px;
+  }
+  .used{color:var(--muted)}
+  .text{white-space:pre-wrap}
+
+  .actions{display:flex; gap:8px; flex-wrap:wrap}
+  .ghost{
+    background:#fff0; border:1px solid var(--border); color:var(--ink); font-weight:700;
+  }
+
+  /* Sticky add bar on mobile */
+  .sticky-add{
+    position:sticky; bottom:0; z-index:2; padding:8px 0 0; background:linear-gradient(180deg,transparent, var(--bg) 30%);
+  }
+
+  /* Modal */
+  dialog{border:0; border-radius:16px; padding:0; width:min(560px, 92vw); background:var(--card); color:inherit}
+  dialog::backdrop{background:rgba(5,10,20,.5)}
+  .modal{padding:18px}
+  .modal h3{margin:0 0 10px}
+  .cat-list{display:grid; gap:8px; max-height:40vh; overflow:auto; margin-top:10px}
+  .cat-row{display:flex; gap:8px; align-items:center; justify-content:space-between; border:1px solid var(--border); padding:8px 10px; border-radius:10px}
+  .cat-row b{font-weight:700}
+  .danger{color:#d33}
+  .muted{color:var(--muted)}
+
+  /* Helpers */
+  .sr{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+  .toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0b1227; color:#fff; padding:12px 16px; border-radius:999px; box-shadow:var(--shadow); z-index:5; display:none}
+  .toast.show{display:block; animation:fade .2s ease}
+  @keyframes fade{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
+
+  /* Mobile tweaks */
+  @media (max-width:640px){
+    .title h1{font-size:22px}
+    .btn{width:100%}
+    .sort{width:100%; max-width:none}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="title">
+        <i>📝</i>
+        <div>
+          <h1>จัดเก็บข้อความที่ใช้บ่อย</h1>
+          <small>บันทึกข้อความ, จัดหมวดหมู่, ค้นหา และคัดลอกอย่างรวดเร็ว</small>
+        </div>
+      </div>
+
+      <div class="stack">
+        <label class="sr" for="txt">ข้อความใหม่</label>
+        <textarea id="txt" class="textarea" placeholder="พิมพ์ข้อความใหม่ที่ต้องการเก็บ..."></textarea>
+
+        <div class="row">
+          <label class="sr" for="cat">หมวดหมู่</label>
+          <div class="select" style="flex:1 1 260px">
+            <select id="cat" aria-label="หมวดหมู่"></select>
+          </div>
+          <button id="addBtn" class="btn btn-primary btn-icon" style="flex:2 1 320px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round"/></svg>
+            เพิ่มข้อความ
+          </button>
+        </div>
+
+        <div class="row">
+          <button id="manageCats" class="btn btn-success btn-icon" style="flex:1 1 220px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7l-8 10-4-4-4 5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            จัดการหมวดหมู่
+          </button>
+        </div>
+
+        <div id="chips" class="chips" aria-label="ตัวกรองหมวดหมู่"></div>
+
+        <div class="bar">
+          <div class="searchbar" style="flex:2 1 340px">
+            <span class="icon">🔎</span>
+            <input id="search" type="text" placeholder="ค้นหาข้อความ..." />
+          </div>
+          <div class="select sort" style="flex:1 1 220px">
+            <select id="sort">
+              <option value="used">เรียงตาม: ใช้บ่อย</option>
+              <option value="new">เรียงตาม: ล่าสุด</option>
+              <option value="old">เรียงตาม: เก่าสุด</option>
+              <option value="az">เรียงตาม: A → Z</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sticky-add"></div>
+        <div id="list" class="list" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: จัดการหมวดหมู่ -->
+  <dialog id="catDlg">
+    <form method="dialog" class="modal">
+      <h3>จัดการหมวดหมู่</h3>
+      <div class="row">
+        <input id="newCat" type="text" placeholder="เพิ่มชื่อหมวดใหม่…" />
+        <button id="addCat" class="btn btn-success" type="button">เพิ่มหมวด</button>
+      </div>
+      <div class="muted" style="margin-top:8px">แตะถังขยะเพื่อลบหมวด (ย้ายรายการในหมวดนั้นไปเป็น “อื่น ๆ” อัตโนมัติ)</div>
+      <div id="catList" class="cat-list" style="margin-top:12px"></div>
+      <div class="row" style="margin-top:14px; justify-content:flex-end">
+        <button class="btn ghost" value="cancel">ปิด</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* -------------------- Data layer -------------------- */
+const store = {
+  keySnip: 'snippets.v1',
+  keyCats: 'categories.v1',
+  defaults: {
+    cats: ["ส่วนของอาคาร","หลังคา","ตู้คอนโทรล","กั้นบ่อ","ประตูนอก/ใน","ในบล่อง","ป้ายเตือน","โครงเวท","อื่น ๆ"],
+    snips: []
+  },
+  get cats(){ return JSON.parse(localStorage.getItem(this.keyCats) || 'null') || this.defaults.cats },
+  set cats(v){ localStorage.setItem(this.keyCats, JSON.stringify(v)) },
+  get snips(){ return JSON.parse(localStorage.getItem(this.keySnip) || 'null') || this.defaults.snips },
+  set snips(v){ localStorage.setItem(this.keySnip, JSON.stringify(v)) },
+};
+
+/* -------------------- Elements -------------------- */
+const els = {
+  txt: document.getElementById('txt'),
+  cat: document.getElementById('cat'),
+  addBtn: document.getElementById('addBtn'),
+  chips: document.getElementById('chips'),
+  list: document.getElementById('list'),
+  sort: document.getElementById('sort'),
+  search: document.getElementById('search'),
+  toast: document.getElementById('toast'),
+  manageCats: document.getElementById('manageCats'),
+  catDlg: document.getElementById('catDlg'),
+  newCat: document.getElementById('newCat'),
+  addCat: document.getElementById('addCat'),
+  catList: document.getElementById('catList'),
+};
+
+/* -------------------- State -------------------- */
+let state = {
+  filter: 'ทั้งหมด',
+  q: '',
+  order: 'used'
+};
+
+/* -------------------- Init -------------------- */
+init();
+function init(){
+  // render category select + chips
+  renderCats();
+  // seed example if empty
+  if(store.snips.length === 0){
+    addSnippet("ตัวอย่าง: รายการตรวจรับงาน • ถังบ่อ • ติดป้ายเตือน","ป้ายเตือน", false);
+    addSnippet("ตัวอย่าง: ตรวจตู้คอนโทรล หมายเลข CB-07","ตู้คอนโทรล", false);
+  }
+  renderList();
+  // events
+  els.addBtn.addEventListener('click', onAdd);
+  els.txt.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ onAdd(); }});
+  els.sort.addEventListener('change', ()=>{ state.order = els.sort.value; renderList(); });
+  els.search.addEventListener('input', ()=>{ state.q = els.search.value.trim(); renderList(); });
+  els.manageCats.addEventListener('click', openCatManager);
+}
+
+/* -------------------- Categories -------------------- */
+function renderCats(){
+  // select
+  els.cat.innerHTML = store.cats.map(c=>`<option>${escapeHtml(c)}</option>`).join('');
+  // chips (include "ทั้งหมด")
+  const chips = ["ทั้งหมด", ...store.cats].map(c=>{
+    const active = c===state.filter ? 'active' : '';
+    return `<button class="chip ${active}" data-cat="${escapeAttr(c)}" type="button">${escapeHtml(c)}</button>`;
+  }).join('');
+  els.chips.innerHTML = chips;
+  els.chips.querySelectorAll('.chip').forEach(ch=>{
+    ch.addEventListener('click', ()=>{
+      state.filter = ch.dataset.cat;
+      renderCats(); // refresh active state
+      renderList();
+    })
+  });
+}
+
+/* -------------------- Add snippet -------------------- */
+function onAdd(){
+  const text = els.txt.value.trim();
+  const cat = els.cat.value;
+  if(!text){ return toast('กรอกข้อความก่อนนะ'); }
+  addSnippet(text, cat, true);
+}
+function addSnippet(text, cat, clear=true){
+  const snips = store.snips;
+  snips.unshift({
+    id: crypto.randomUUID(),
+    text, cat,
+    used: 0,
+    createdAt: Date.now()
+  });
+  store.snips = snips;
+  if(clear){ els.txt.value=''; }
+  renderList();
+  if(clear) toast('บันทึกแล้ว ✓');
+}
+
+/* -------------------- List render -------------------- */
+function renderList(){
+  const q = state.q.toLowerCase();
+  let data = [...store.snips];
+
+  // filter by chip
+  if(state.filter !== 'ทั้งหมด'){
+    data = data.filter(s => s.cat === state.filter);
+  }
+  // search
+  if(q){
+    data = data.filter(s => s.text.toLowerCase().includes(q));
+  }
+  // sort
+  const by = state.order;
+  data.sort((a,b)=>{
+    if(by==='used') return b.used - a.used || b.createdAt - a.createdAt;
+    if(by==='new') return b.createdAt - a.createdAt;
+    if(by==='old') return a.createdAt - b.createdAt;
+    if(by==='az')  return a.text.localeCompare(b.text, 'th');
+    return 0;
+  });
+
+  els.list.innerHTML = data.map(s=>itemTpl(s)).join('');
+  // attach actions
+  els.list.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.addEventListener('click', ()=>handleAction(btn.dataset.act, btn.dataset.id));
+  });
+}
+function itemTpl(s){
+  return `
+  <article class="item" data-id="${s.id}">
+    <div class="meta">
+      <span class="badge">${escapeHtml(s.cat)}</span>
+      <span class="used">ใช้บ่อย: ${s.used} ครั้ง</span>
+    </div>
+    <div class="text">${linkify(escapeHtml(s.text))}</div>
+    <div class="actions">
+      <button class="btn ghost" data-act="copy" data-id="${s.id}">คัดลอก</button>
+      <button class="btn ghost" data-act="use"  data-id="${s.id}">นับใช้บ่อย +1</button>
+      <button class="btn ghost" data-act="edit" data-id="${s.id}">แก้ไข</button>
+      <button class="btn ghost danger" data-act="del" data-id="${s.id}">ลบ</button>
+    </div>
+  </article>`;
+}
+
+/* -------------------- Item actions -------------------- */
+async function handleAction(act, id){
+  const snips = store.snips;
+  const i = snips.findIndex(s=>s.id===id);
+  if(i<0) return;
+
+  if(act==='copy'){
+    try{
+      await navigator.clipboard.writeText(snips[i].text);
+      toast('คัดลอกแล้ว');
+    }catch{ toast('คัดลอกไม่สำเร็จ'); }
+  }
+  if(act==='use'){
+    snips[i].used++;
+    store.snips = snips;
+    renderList();
+  }
+  if(act==='edit'){
+    const t = prompt('แก้ไขข้อความ:', snips[i].text);
+    if(t!==null){
+      snips[i].text = t.trim();
+      store.snips = snips;
+      renderList();
+    }
+  }
+  if(act==='del'){
+    if(confirm('ลบรายการนี้หรือไม่?')){
+      snips.splice(i,1);
+      store.snips = snips;
+      renderList();
+    }
+  }
+}
+
+/* -------------------- Category manager -------------------- */
+function openCatManager(){
+  renderCatList();
+  els.catDlg.showModal();
+  els.addCat.onclick = ()=>{
+    const name = els.newCat.value.trim();
+    if(!name) return;
+    const cats = store.cats;
+    if(cats.includes(name)) return toast('มีหมวดนี้อยู่แล้ว');
+    cats.push(name);
+    store.cats = cats;
+    els.newCat.value='';
+    renderCats(); renderCatList();
+  };
+}
+function renderCatList(){
+  const cats = store.cats;
+  els.catList.innerHTML = cats.map(c => `
+    <div class="cat-row">
+      <b>${escapeHtml(c)}</b>
+      <button class="btn ghost danger" data-rm="${escapeAttr(c)}">🗑 ลบ</button>
+    </div>
+  `).join('');
+  els.catList.querySelectorAll('[data-rm]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const name = btn.dataset.rm;
+      if(!confirm(`ลบหมวด “${name}” ?`)) return;
+      const cats = store.cats.filter(x=>x!==name);
+      store.cats = cats;
+      // move items to "อื่น ๆ"
+      const sn = store.snips.map(s => s.cat===name ? {...s, cat:"อื่น ๆ"} : s);
+      store.snips = sn;
+      renderCats(); renderList(); renderCatList();
+    }
+  });
+}
+
+/* -------------------- Utils -------------------- */
+function toast(msg){
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  clearTimeout(toast.tid);
+  toast.tid = setTimeout(()=>els.toast.classList.remove('show'), 1400);
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])) }
+function escapeAttr(s){ return s.replace(/"/g,'&quot;') }
+function linkify(text){
+  return text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+}
+</script>
+</body>
+</html>
