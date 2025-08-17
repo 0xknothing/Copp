@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบจัดเก็บข้อความ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Sarabun',sans-serif}
+    .fade-in{animation:fadeIn .3s ease-in-out}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .slide-up{animation:slideUp .3s ease-out}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .modal-backdrop{animation:fadeIn .2s ease-out}
+    .modal-content{animation:slideUp .3s ease-out}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+  <!-- Header -->
+  <div class="bg-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-center gap-2">
+      <svg class="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      <h1 class="text-2xl font-bold text-gray-800">ระบบจัดเก็บข้อความ</h1>
+    </div>
+  </div>
+
+  <div class="max-w-md mx-auto px-4 py-6">
+    <!-- Filter and Search -->
+    <div class="bg-white rounded-2xl shadow-lg p-4 mb-6">
+      <div class="flex flex-col gap-3">
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          </span>
+          <input id="searchInput" type="text" placeholder="ค้นหาข้อความ..." class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        </div>
+        <select id="categoryFilter" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <option value="">📂 ทุกหมวดหมู่</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Category Management -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">จัดการหมวดหมู่</h2>
+      <div id="categoryList" class="space-y-2 mb-4"></div>
+      <div class="flex gap-2">
+        <input id="newCategoryInput" type="text" placeholder="เพิ่มหมวดหมู่ใหม่..." class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <button id="addCategoryBtn" class="bg-green-500 text-white p-3 rounded-xl hover:bg-green-600 flex-shrink-0"></button>
+      </div>
+    </div>
+
+    <!-- Add Message Form -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">เพิ่มข้อความใหม่</h2>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
+        <div id="quickCategories" class="flex flex-wrap gap-2 mb-3"></div>
+        <input id="customCategory" type="text" placeholder="หรือพิมพ์หมวดหมู่ใหม่..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-2">ข้อความ</label>
+        <textarea id="messageText" placeholder="พิมพ์ข้อความที่ต้องการเก็บ..." class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent h-32 resize-none"></textarea>
+      </div>
+      <button id="addMessageBtn" class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-6 rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"></button>
+    </div>
+
+    <!-- Messages Display -->
+    <div id="messagesContainer" class="space-y-4"></div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="text-center py-12 hidden">
+      <svg class="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      <h3 class="text-xl font-semibold text-gray-600 mb-2">ยังไม่มีข้อความ</h3>
+      <p class="text-gray-500">เริ่มต้นด้วยการเพิ่มข้อความแรกของคุณ</p>
+    </div>
+  </div>
+
+  <!-- Message Detail Modal -->
+  <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden modal-backdrop">
+    <div class="flex items-end justify-center min-h-screen p-4">
+      <div class="bg-white rounded-t-3xl w-full max-w-md modal-content">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">รายละเอียดข้อความ</h3>
+            <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl" aria-label="ปิด">&times;</button>
+          </div>
+          <div id="modalContent"></div>
+          <div class="flex gap-3 mt-6">
+            <button id="editMessageBtn" class="flex-1 bg-blue-500 text-white py-3 px-4 rounded-xl font-medium hover:bg-blue-600 flex items-center justify-center gap-2"></button>
+            <button id="copyMessageBtn" class="flex-1 bg-indigo-500 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-600 flex items-center justify-center gap-2"></button>
+            <button id="deleteMessageBtn" class="flex-1 bg-red-500 text-white py-3 px-4 rounded-xl font-medium hover:bg-red-600 flex items-center justify-center gap-2"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Modals (Confirm & Prompt) -->
+  <div id="customConfirmModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 modal-content">
+      <p id="confirmMessage" class="text-gray-800 text-lg text-center mb-6"></p>
+      <div class="flex gap-3">
+        <button id="confirmCancel" class="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300">ยกเลิก</button>
+        <button id="confirmOk" class="flex-1 bg-red-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-red-600">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="customPromptModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 modal-content">
+      <p id="promptMessage" class="text-gray-800 text-lg mb-4"></p>
+      <input id="promptInput" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-xl mb-6 focus:ring-2 focus:ring-blue-500">
+      <div class="flex gap-3">
+        <button id="promptCancel" class="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-300">ยกเลิก</button>
+        <button id="promptOk" class="flex-1 bg-blue-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-600">ตกลง</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    // ===== SVG Icons =====
+    const ICONS = {
+      plus: '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>',
+      edit: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg>',
+      trash: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>',
+      copy: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>',
+      work: '💼', idea: '💡', personal: '🏠', important: '⭐', general: '🗂️', default: '📝'
+    };
+
+    // ===== Config & State =====
+    let messages = JSON.parse(localStorage.getItem('messages')) || [];
+    let categories = JSON.parse(localStorage.getItem('categories')) || ['งาน', 'ส่วนตัว', 'ไอเดีย', 'สำคัญ'];
+    let selectedCategory = '';
+    let currentMessageId = null;
+    const RESERVED = new Set(['ทั่วไป']);
+    const categoryEmojis = { 'งาน': ICONS.work, 'ส่วนตัว': ICONS.personal, 'ไอเดีย': ICONS.idea, 'สำคัญ': ICONS.important, 'ทั่วไป': ICONS.general, 'default': ICONS.default };
+
+    // ===== Utils =====
+    const $ = (id) => document.getElementById(id);
+    function escapeHtml(str = '') { return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s])); }
+    function persist() { localStorage.setItem('messages', JSON.stringify(messages)); localStorage.setItem('categories', JSON.stringify(categories)); }
+    function ensureDefaultCategory() { if (!categories.includes('ทั่วไป')) categories.push('ทั่วไป'); }
+    function isDupCategory(name) { const n = name.toLowerCase(); return categories.some(c => c.toLowerCase() === n); }
+    function normalizeName(v) { return (v || '').trim(); }
+
+    function showToast(msg, type = 'success') {
+      const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+      const div = document.createElement('div');
+      div.className = `fixed top-20 left-1/2 -translate-x-1/2 ${colors[type]} text-white px-4 py-2 rounded-xl z-[101] fade-in`;
+      div.textContent = msg;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 3000);
+    }
+    
+    // ===== Custom Modals Logic =====
+    function customConfirm(message) {
+      return new Promise((resolve) => {
+        $('confirmMessage').textContent = message;
+        $('customConfirmModal').classList.remove('hidden');
+        $('customConfirmModal').classList.add('flex');
+        $('confirmOk').onclick = () => { resolve(true); closeModalViews('customConfirmModal'); };
+        $('confirmCancel').onclick = () => { resolve(false); closeModalViews('customConfirmModal'); };
+      });
+    }
+
+    function customPrompt(message, defaultValue = '') {
+      return new Promise((resolve) => {
+        $('promptMessage').textContent = message;
+        $('promptInput').value = defaultValue;
+        $('customPromptModal').classList.remove('hidden');
+        $('customPromptModal').classList.add('flex');
+        $('promptOk').onclick = () => { resolve($('promptInput').value); closeModalViews('customPromptModal'); };
+        $('promptCancel').onclick = () => { resolve(null); closeModalViews('customPromptModal'); };
+        setTimeout(() => $('promptInput').focus(), 50);
+      });
+    }
+    
+    function closeModalViews(modalId) {
+        $(modalId).classList.add('hidden');
+        $(modalId).classList.remove('flex');
+    }
+
+
+    // ===== Category UI =====
+    function renderCategories() {
+      const list = $('categoryList'), quick = $('quickCategories'), filter = $('categoryFilter');
+      list.textContent = ''; quick.textContent = '';
+      const currentFilter = filter.value;
+      filter.innerHTML = '<option value="">📂 ทุกหมวดหมู่</option>';
+
+      categories.forEach(cat => {
+        const icon = categoryEmojis[cat] || categoryEmojis.default;
+        // Manager list item
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg';
+        row.innerHTML = `
+          <span class="flex items-center gap-2">${icon} ${escapeHtml(cat)}</span>
+          <div class='flex gap-2'>
+            <button data-cat-edit="${escapeHtml(cat)}" class='text-blue-500 hover:text-blue-700'>${ICONS.edit}</button>
+            <button data-cat-del="${escapeHtml(cat)}" class='text-red-500 hover:text-red-700'>${ICONS.trash}</button>
+          </div>`;
+        list.appendChild(row);
+        
+        // Quick select button
+        const q = document.createElement('button');
+        q.className = 'category-btn px-4 py-2 rounded-full text-sm font-medium bg-gray-100 hover:bg-gray-200 flex items-center gap-2';
+        q.innerHTML = `${icon} ${escapeHtml(cat)}`;
+        q.onclick = (e) => selectCategory(cat, e.currentTarget);
+        quick.appendChild(q);
+
+        // Filter option
+        const opt = document.createElement('option');
+        opt.value = cat; opt.textContent = `${icon} ${cat}`;
+        filter.appendChild(opt);
+      });
+      filter.value = currentFilter;
+    }
+
+    function addCategory() {
+      const input = $('newCategoryInput');
+      const val = normalizeName(input.value);
+      if (!val) { showToast('กรุณาพิมพ์ชื่อหมวดหมู่', 'error'); return; }
+      if (isDupCategory(val)) { showToast('มีหมวดหมู่นี้อยู่แล้ว', 'info'); return; }
+      categories.push(val); persist(); renderCategories(); showToast('เพิ่มหมวดหมู่สำเร็จ ✅', 'success'); input.value = '';
+    }
+
+    async function removeCategory(cat) {
+      if (RESERVED.has(cat)) { showToast('หมวดพื้นฐานลบไม่ได้', 'error'); return; }
+      const confirmed = await customConfirm(`ลบหมวดหมู่ "${cat}" ?\nข้อความทั้งหมดจะถูกย้ายไป "ทั่วไป"`);
+      if (!confirmed) return;
+      messages = messages.map(m => m.category === cat ? { ...m, category: 'ทั่วไป' } : m);
+      categories = categories.filter(c => c !== cat);
+      ensureDefaultCategory();
+      persist(); renderCategories(); displayMessages(); showToast('ลบหมวดหมู่แล้ว', 'info');
+    }
+
+    async function renameCategory(cat) {
+      if (RESERVED.has(cat)) { showToast('หมวดพื้นฐานแก้ไขไม่ได้', 'error'); return; }
+      const newName = normalizeName(await customPrompt('เปลี่ยนชื่อหมวดหมู่:', cat));
+      if (newName === null) return;
+      if (!newName) { showToast('ชื่อหมวดหมู่ห้ามว่าง', 'error'); return; }
+      if (isDupCategory(newName)) { showToast('มีหมวดหมู่นี้อยู่แล้ว', 'error'); return; }
+      categories = categories.map(c => c === cat ? newName : c);
+      messages = messages.map(m => m.category === cat ? { ...m, category: newName } : m);
+      persist(); renderCategories(); displayMessages(); showToast('แก้ไขชื่อหมวดหมู่แล้ว', 'info');
+    }
+
+    function selectCategory(category, target) {
+      selectedCategory = category;
+      $('customCategory').value = '';
+      document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-100'));
+      if (target) target.classList.add('ring-2', 'ring-blue-500', 'bg-blue-100');
+    }
+
+    // ===== Messages CRUD =====
+    function addMessage() {
+      const addBtn = $('addMessageBtn');
+      addBtn.disabled = true;
+      const messageText = normalizeName($('messageText').value);
+      const customCategory = normalizeName($('customCategory').value);
+      const category = customCategory || selectedCategory || 'ทั่วไป';
+
+      if (!messageText) { showToast('กรุณาใส่ข้อความ', 'error'); addBtn.disabled = false; return; }
+
+      const message = { id: Date.now(), text: messageText, category, timestamp: new Date().toLocaleString('th-TH'), created: Date.now() };
+      messages.unshift(message);
+      if (!categories.includes(category)) categories.push(category);
+      ensureDefaultCategory();
+      persist();
+
+      $('messageText').value = ''; $('customCategory').value = ''; selectedCategory = '';
+      document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-100'));
+      displayMessages(); renderCategories(); showToast('เพิ่มข้อความสำเร็จ! 🎉', 'success');
+      addBtn.disabled = false;
+    }
+
+    function openMessageModal(id) {
+      const m = messages.find(x => x.id === id); if (!m) return; currentMessageId = id;
+      const icon = categoryEmojis[m.category] || categoryEmojis.default;
+      $('modalContent').innerHTML = `
+        <div class='mb-4'>
+          <span class='inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 mb-3'>${icon} ${escapeHtml(m.category)}</span>
+          <p class='text-sm text-gray-500 mb-3'>${escapeHtml(m.timestamp)}</p>
+          <div class='bg-gray-50 rounded-xl p-4 max-h-60 overflow-y-auto'>
+            <p class='text-gray-800 whitespace-pre-wrap break-words'>${escapeHtml(m.text)}</p>
+          </div>
+        </div>`;
+      $('messageModal').classList.remove('hidden');
+    }
+    function closeModal() { $('messageModal').classList.add('hidden'); currentMessageId = null; }
+
+    async function editMessage() {
+      const m = messages.find(x => x.id === currentMessageId); if (!m) return;
+      const newText = await customPrompt('แก้ไขข้อความ:', m.text);
+      if (newText !== null && normalizeName(newText)) {
+        m.text = normalizeName(newText);
+        m.timestamp = new Date().toLocaleString('th-TH') + ' (แก้ไข)';
+        persist(); displayMessages(); closeModal(); showToast('แก้ไขข้อความแล้ว', 'info');
+      }
+    }
+
+    async function deleteMessage() {
+      const confirmed = await customConfirm('คุณต้องการลบข้อความนี้ใช่หรือไม่?');
+      if (!confirmed) return;
+      messages = messages.filter(x => x.id !== currentMessageId);
+      persist(); displayMessages(); closeModal(); showToast('ลบข้อความแล้ว', 'success');
+    }
+
+    async function copyMessage() {
+      const m = messages.find(x => x.id === currentMessageId); if (!m) return;
+      try {
+        await navigator.clipboard.writeText(m.text);
+        showToast('คัดลอกข้อความแล้ว', 'success');
+      } catch { showToast('คัดลอกไม่สำเร็จ', 'error'); }
+    }
+
+    // ===== List & Filter =====
+    function displayMessages() {
+      const c = $('messagesContainer'), e = $('emptyState');
+      const filtered = getFilteredMessages();
+
+      if (messages.length === 0) { c.innerHTML = ''; e.classList.remove('hidden'); return; }
+      e.classList.add('hidden');
+
+      if (filtered.length === 0) { c.innerHTML = '<div class="text-center py-8"><div class="text-4xl mb-3">🔍</div><p class="text-gray-500">ไม่พบข้อความที่ตรงกัน</p></div>'; return; }
+      
+      c.innerHTML = filtered.map(m => {
+        const icon = categoryEmojis[m.category] || categoryEmojis.default;
+        const preview = m.text.length > 100 ? m.text.substring(0, 100) + '...' : m.text;
+        return `
+        <div class='bg-white rounded-2xl shadow-lg p-4 fade-in cursor-pointer hover:shadow-xl transition-shadow' onclick='openMessageModal(${m.id})'>
+          <div class='flex justify-between items-center mb-3'>
+            <span class='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700'>${icon} ${escapeHtml(m.category)}</span>
+            <span class='text-xs text-gray-500'>${escapeHtml(m.timestamp)}</span>
+          </div>
+          <p class='text-gray-800 break-words'>${escapeHtml(preview)}</p>
+          ${m.text.length > 100 ? '<p class="text-blue-500 text-sm mt-2 font-semibold">แตะเพื่อดูเพิ่มเติม...</p>' : ''}
+        </div>`;
+      }).join('');
+    }
+
+    function getFilteredMessages() {
+      const t = $('searchInput').value.toLowerCase();
+      const f = $('categoryFilter').value;
+      return messages.filter(m => {
+        const s = m.text.toLowerCase().includes(t) || m.category.toLowerCase().includes(t);
+        const c = !f || m.category === f; return s && c;
+      });
+    }
+
+    // ===== Event Listeners & Init =====
+    function debounce(fn, ms) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), ms); }; }
+    const debouncedFilter = debounce(() => displayMessages(), 250);
+    
+    // Initial UI setup
+    function initializeUI() {
+        $('addCategoryBtn').innerHTML = ICONS.plus;
+        $('addMessageBtn').innerHTML = `${ICONS.plus} <span>เพิ่มข้อความ</span>`;
+        $('editMessageBtn').innerHTML = `${ICONS.edit} <span>แก้ไข</span>`;
+        $('copyMessageBtn').innerHTML = `${ICONS.copy} <span>คัดลอก</span>`;
+        $('deleteMessageBtn').innerHTML = `${ICONS.trash} <span>ลบ</span>`;
+    }
+
+    // Event Delegation for category buttons
+    $('categoryList').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-cat-edit]');
+        const delBtn = e.target.closest('[data-cat-del]');
+        if (editBtn) renameCategory(editBtn.dataset.catEdit);
+        if (delBtn) removeCategory(delBtn.dataset.catDel);
+    });
+
+    $('searchInput').addEventListener('input', debouncedFilter);
+    $('categoryFilter').addEventListener('change', displayMessages);
+    $('newCategoryInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addCategory(); });
+    $('addCategoryBtn').addEventListener('click', addCategory);
+    $('addMessageBtn').addEventListener('click', addMessage);
+    $('messageModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+    
+    // Modal button bindings
+    $('editMessageBtn').addEventListener('click', editMessage);
+    $('copyMessageBtn').addEventListener('click', copyMessage);
+    $('deleteMessageBtn').addEventListener('click', deleteMessage);
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+      ensureDefaultCategory();
+      initializeUI();
+      renderCategories();
+      displayMessages();
+    });
+  </script>
+</body>
+</html>
