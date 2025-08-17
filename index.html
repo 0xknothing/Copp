@@ -1,368 +1,478 @@
-<!DOCTYPE html><html lang="th">
+<!DOCTYPE html>
+<html lang="th">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ระบบจัดเก็บข้อความ (IndexedDB)</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --bg1:#eef2ff; --bg2:#f7f8ff; --ink:#0f172a; --muted:#6b7280; --brand:#2563eb; --brand-2:#4f46e5; --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444; --card:#ffffff; --border:#e5e7eb;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0; font:16px/1.5 'Noto Sans Thai', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--ink); background:linear-gradient(180deg,var(--bg1),var(--bg2)) fixed; -webkit-tap-highlight-color: transparent;}
-    .container{max-width:860px; margin:0 auto; padding:24px 16px 120px}
-    .title{display:flex; align-items:center; gap:12px; font-weight:800; font-size:clamp(28px,6vw,48px); letter-spacing:.3px}
-    .subtitle{color:var(--muted); margin-top:4px}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:20px; box-shadow:0 10px 30px rgba(2,6,23,.08); padding:18px; margin-top:18px}
-    .card h3{margin:8px 0 10px; font-size:20px}
-    .row{display:flex; gap:10px; align-items:center}
-    .stack{display:flex; flex-direction:column; gap:10px}
-    input[type="text"], textarea, select{width:100%; font:inherit; padding:14px 16px; border-radius:14px; border:1px solid var(--border); outline:none; background:#fff}
-    textarea{min-height:120px; resize:vertical}
-    .hint{color:var(--muted); font-size:13px}
-    .error{color:var(--danger); font-weight:600; margin-top:8px}
-    .btn{user-select:none; cursor:pointer; border:none; border-radius:16px; padding:14px 18px; font-weight:700; font-size:16px; transition:.2s transform ease, .2s opacity; display:inline-flex; align-items:center; justify-content:center; gap:8px}
-    .btn:active{transform:scale(.98)}
-    .btn-primary{background:linear-gradient(180deg,var(--brand),var(--brand-2)); color:#fff}
-    .btn-ghost{background:#f3f4f6; color:#111827}
-    .btn-danger{background:linear-gradient(180deg,#f43f5e,#ef4444); color:#fff}
-    .btn-ok{background:linear-gradient(180deg,#10b981,#059669); color:#fff}
-    .btn-warning{background:linear-gradient(180deg,#f59e0b,#d97706); color:#fff}
-    .btn-big{padding:16px 22px; font-size:18px; border-radius:18px}
-    .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
-    .chip{display:flex; align-items:center; gap:8px; background:#f3f4f6; padding:10px 14px; border-radius:999px; border:1px solid var(--border); font-weight:600}
-    .chip button{border:none; background:transparent; width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; cursor:pointer}
-    .chip.active{background:#e0e7ff; border-color:#c7d2fe}
-    .list{display:flex; flex-direction:column; gap:12px; margin-top:10px}
-    .item{border:1px solid var(--border); background:#fff; border-radius:16px; padding:14px}
-    .item-header{display:flex; align-items:center; justify-content:space-between; gap:12px}
-    .stamp{color:var(--muted); font-size:12px}
-    .item-actions{display:flex; gap:8px; flex-wrap:wrap}
-    .item pre{white-space:pre-wrap; word-break:break-word; margin:8px 0 0}
-    .toolbar{display:flex; gap:10px; flex-wrap:wrap}
-    .placeholder{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px 12px; color:var(--muted)}
-    .search{display:flex; gap:10px; align-items:center}
-    .pill{font-weight:700; padding:8px 12px; background:#eef2ff; border:1px solid #e0e7ff; border-radius:999px}
-    .footer{position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.9); border-top:1px solid var(--border); backdrop-filter: blur(10px); padding:8px 12px}
-    .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:#111827; color:white; padding:12px 16px; border-radius:12px; opacity:0; pointer-events:none; transition:.3s opacity,.3s transform; box-shadow:0 10px 30px rgba(0,0,0,.2);}
-    .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px)}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการข้อความตามหมวดหมู่ (Firebase)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        .toast {
+            transform: translateX(120%);
+            transition: transform 0.3s ease-in-out;
+            visibility: hidden;
+        }
+        .toast.show {
+            transform: translateX(0);
+            visibility: visible;
+        }
+        .modal {
+            backdrop-filter: blur(4px);
+        }
+        .category-item:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s ease;
+        }
+        .text-item {
+            transition: all 0.3s ease;
+        }
+        .text-item:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-<body>
-  <div class="container">
-    <div class="title">📝 <span>ระบบจัดเก็บข้อความ</span></div>
-    <div class="subtitle">IndexedDB ความจุสูง + สำรอง/กู้คืนไฟล์ JSON เหมาะกับมือถือ ปุ่มใหญ่ใช้งานง่าย</div><!-- หมวดหมู่ -->
-<section class="card" id="categoryCard">
-  <h3>📁 หมวดหมู่</h3>
-  <div class="row">
-    <input id="categoryInput" type="text" placeholder="ชื่อหมวดหมู่ใหม่" maxlength="40" />
-    <button id="addCategoryBtn" class="btn btn-primary btn-big">เพิ่ม</button>
-  </div>
-  <div class="hint">ไม่แนะนำให้เกิน 100 หมวด (เพื่อความลื่น)</div>
-  <div id="catError" class="error" style="display:none">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>
-  <div class="chips" id="categoryChips"></div>
-</section>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg border-b-4 border-indigo-500">
+        <div class="container mx-auto px-6 py-4">
+            <h1 class="text-3xl font-bold text-gray-800 text-center">📝 ระบบจัดการข้อความตามหมวดหมู่</h1>
+        </div>
+    </header>
 
-<!-- แสดง/เพิ่มข้อความ -->
-<section class="card" id="messageCard">
-  <h3 id="messageCardTitle">💬 เลือกหมวดหมู่เพื่อดูข้อความ</h3>
-  <div id="messagePanel" class="stack" style="display:none">
-    <div class="row" style="align-items:stretch">
-      <textarea id="messageInput" placeholder="พิมพ์ข้อความที่จะบันทึก…" style="flex:1"></textarea>
-      <div class="stack" style="min-width:210px">
-        <button id="saveMsgBtn" class="btn btn-ok btn-big">บันทึกข้อความ</button>
-        <button id="clearMsgBtn" class="btn btn-ghost btn-big">ล้าง</button>
-      </div>
+    <div class="container mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Categories Section -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">📁 หมวดหมู่</h2>
+                    <!-- Add Category Form -->
+                    <div class="mb-6">
+                        <div class="flex gap-2">
+                            <input type="text" id="categoryInput" placeholder="ชื่อหมวดหมู่ใหม่..." class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
+                            <button id="addCategoryBtn" onclick="addCategory()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">เพิ่ม</button>
+                        </div>
+                    </div>
+                    <!-- Categories List -->
+                    <div id="categoriesList" class="space-y-2">
+                        <!-- Loading spinner for categories -->
+                        <div id="categoryLoader" class="flex justify-center py-4"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Management Section -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg p-6 min-h-[300px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800 flex items-center">📄 ข้อความ <span id="selectedCategoryName" class="ml-2 text-indigo-600 font-normal"></span></h2>
+                    </div>
+                    <!-- Add Text Form -->
+                    <div id="addTextSection" class="mb-6 hidden">
+                        <div class="space-y-3">
+                            <textarea id="textContentInput" placeholder="เนื้อหาข้อความ... (Ctrl+Enter เพื่อเพิ่ม)" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"></textarea>
+                            <button id="addTextBtn" onclick="addText()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">เพิ่มข้อความ</button>
+                        </div>
+                    </div>
+                    <!-- No Category Selected Message -->
+                    <div id="noCategoryMessage" class="text-center py-12">
+                        <div class="text-6xl mb-4">📂</div>
+                        <p class="text-gray-500 text-lg">เลือกหมวดหมู่เพื่อเริ่มจัดการข้อความ</p>
+                    </div>
+                    <!-- Text List -->
+                    <div id="textsList" class="space-y-4 hidden">
+                         <!-- Loading spinner for texts -->
+                        <div id="textLoader" class="flex justify-center py-8"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="toolbar">
-      <div class="search" style="flex:1">
-        <input id="searchInput" type="text" placeholder="ค้นหาในหมวดนี้"/>
-        <span id="countPill" class="pill">0 รายการ</span>
-      </div>
-      <input id="importFile" type="file" accept="application/json" style="display:none" />
-      <button id="exportBtn" class="btn btn-primary btn-big">สำรองข้อมูล</button>
-      <button id="importBtn" class="btn btn-warning btn-big">กู้คืน</button>
-      <button id="deleteCatBtn" class="btn btn-danger btn-big">ลบหมวดนี้</button>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">แก้ไขข้อความ</h3>
+            <div class="space-y-3">
+                <textarea id="editContentInput" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"></textarea>
+                <div class="flex gap-3 justify-end">
+                    <button onclick="closeEditModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">ยกเลิก</button>
+                    <button onclick="saveEdit()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">บันทึก</button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="list" id="messageList"></div>
-  </div>
-  <div id="placeholder" class="placeholder">
-    <div style="font-size:56px">🗒️</div>
-    <div style="max-width:520px">เลือกหมวดหมู่เพื่อเริ่มต้นจัดเก็บข้อความ</div>
-  </div>
-</section>
 
-  </div>  <div id="toast" class="toast" role="status" aria-live="polite"></div>  <script>
-  ;(()=>{
-    // ---------------- IndexedDB Helper ----------------
-    const DB_NAME='snippetDB.th.v1';
-    const DB_VERSION=1;
-    let dbPromise=null;
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg toast z-50">
+        <span id="toastMessage"></span>
+    </div>
 
-    function openDB(){
-      if(dbPromise) return dbPromise;
-      dbPromise = new Promise((resolve, reject)=>{
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = (e)=>{
-          const db = req.result;
-          if(!db.objectStoreNames.contains('categories')){
-            const cat = db.createObjectStore('categories', {keyPath:'id'});
-            cat.createIndex('byName','name',{unique:false});
-            cat.createIndex('byCreated','createdAt');
-          }
-          if(!db.objectStoreNames.contains('items')){
-            const it = db.createObjectStore('items', {keyPath:'id'});
-            it.createIndex('byCategory','categoryId');
-            it.createIndex('byCreated','createdAt');
-          }
-        };
-        req.onsuccess = ()=> resolve(req.result);
-        req.onerror = ()=> reject(req.error);
-      });
-      return dbPromise;
-    }
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, 
+            onSnapshot, collection, query, writeBatch, getDocs
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    function tx(storeNames, mode='readonly'){ return openDB().then(db=>db.transaction(storeNames, mode)); }
-    function store(t, name){ return t.objectStore(name); }
+        // --- Firebase Configuration ---
+        // This configuration is provided by the environment.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" }; // Fallback for local testing
 
-    async function getAll(storeName){
-      const t = await tx([storeName]);
-      const s = store(t, storeName);
-      return new Promise((res,rej)=>{
-        const arr=[]; const req=s.openCursor();
-        req.onsuccess=()=>{ const c=req.result; if(c){ arr.push(c.value); c.continue(); } else res(arr); };
-        req.onerror=()=>rej(req.error);
-      });
-    }
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'text-manager-app';
 
-    async function put(storeName, obj){ const t=await tx([storeName],'readwrite'); await new Promise((res,rej)=>{ const r=store(t,storeName).put(obj); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-    async function remove(storeName, key){ const t=await tx([storeName],'readwrite'); await new Promise((res,rej)=>{ const r=store(t,storeName).delete(key); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-    async function getByIndex(storeName, indexName, query){ const t=await tx([storeName]); const s=store(t,storeName).index(indexName); return new Promise((res,rej)=>{ const arr=[]; const r=s.openCursor(IDBKeyRange.only(query)); r.onsuccess=()=>{ const c=r.result; if(c){ arr.push(c.value); c.continue(); } else res(arr); }; r.onerror=()=>rej(r.error); }); }
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
 
-    // ---------------- Utilities ----------------
-    const els = {
-      categoryInput: document.getElementById('categoryInput'),
-      addCategoryBtn: document.getElementById('addCategoryBtn'),
-      catError: document.getElementById('catError'),
-      categoryChips: document.getElementById('categoryChips'),
-      messageCardTitle: document.getElementById('messageCardTitle'),
-      messagePanel: document.getElementById('messagePanel'),
-      messageInput: document.getElementById('messageInput'),
-      saveMsgBtn: document.getElementById('saveMsgBtn'),
-      clearMsgBtn: document.getElementById('clearMsgBtn'),
-      deleteCatBtn: document.getElementById('deleteCatBtn'),
-      messageList: document.getElementById('messageList'),
-      placeholder: document.getElementById('placeholder'),
-      searchInput: document.getElementById('searchInput'),
-      countPill: document.getElementById('countPill'),
-      toast: document.getElementById('toast'),
-      exportBtn: document.getElementById('exportBtn'),
-      importBtn: document.getElementById('importBtn'),
-      importFile: document.getElementById('importFile'),
-    };
+        // --- Global State ---
+        let userId = null;
+        let selectedCategory = null; // { id: '...', name: '...' }
+        let editingTextId = null;
+        let unsubscribeCategories = () => {};
+        let unsubscribeTexts = () => {};
 
-    function uid(){ return (Date.now().toString(36) + Math.random().toString(36).slice(2,8)); }
-    function nowISO(){ return new Date().toISOString(); }
-    function fmt(ts){ const d=new Date(ts); return d.toLocaleString(undefined,{hour12:false}); }
-    function toast(msg){ els.toast.textContent = msg; els.toast.classList.add('show'); setTimeout(()=>els.toast.classList.remove('show'), 1600); }
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            authenticateUser();
+        });
 
-    let selectedId = localStorage.getItem('snippet.selectedId') || null;
+        // --- Authentication ---
+        function authenticateUser() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("User is signed in with UID:", user.uid);
+                    userId = user.uid;
+                    listenForCategories();
+                } else {
+                    console.log("User is not signed in. Attempting to sign in.");
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error during sign-in:", error);
+                        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                    }
+                }
+            });
+        }
+        
+        // --- Firestore Real-time Listeners ---
+        function listenForCategories() {
+            if (!userId) return;
+            const categoriesCol = collection(db, 'artifacts', appId, 'users', userId, 'categories');
+            unsubscribeCategories(); // Unsubscribe from previous listener
+            unsubscribeCategories = onSnapshot(categoriesCol, (snapshot) => {
+                const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCategories(categories);
+            }, (error) => {
+                console.error("Error listening for categories:", error);
+                showToast('ไม่สามารถโหลดหมวดหมู่ได้', 'error');
+            });
+        }
 
-    // ---------------- Category Logic ----------------
-    async function listCategories(){
-      const cats = await getAll('categories');
-      // sort newest first
-      cats.sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
-      return cats;
-    }
+        function listenForTexts() {
+            if (!userId || !selectedCategory) return;
+            unsubscribeTexts(); // Unsubscribe from previous listener
+            document.getElementById('textLoader').style.display = 'flex';
+            document.getElementById('textsList').innerHTML = '';
 
-    async function addCategory(name){
-      name=(name||'').trim(); if(!name) return toast('โปรดกรอกชื่อหมวดหมู่');
-      const cats = await listCategories();
-      if(cats.some(c=>c.name.toLowerCase()===name.toLowerCase())) return toast('มีชื่อหมวดนี้แล้ว');
-      const obj={id:uid(), name, createdAt:nowISO()};
-      await put('categories', obj);
-      selectedId=obj.id; localStorage.setItem('snippet.selectedId', selectedId);
-      els.categoryInput.value='';
-      render(); toast('เพิ่มหมวดหมู่แล้ว');
-    }
+            const textsCol = collection(db, 'artifacts', appId, 'users', userId, 'categories', selectedCategory.id, 'texts');
+            unsubscribeTexts = onSnapshot(textsCol, (snapshot) => {
+                const texts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Simple sort by timestamp (newest first)
+                texts.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                renderTexts(texts);
+            }, (error) => {
+                console.error("Error listening for texts:", error);
+                showToast('ไม่สามารถโหลดข้อความได้', 'error');
+                document.getElementById('textLoader').style.display = 'none';
+            });
+        }
 
-    async function deleteCategory(){
-      if(!selectedId) return;
-      const cats = await listCategories();
-      const name = cats.find(c=>c.id===selectedId)?.name || '';
-      if(!confirm('ลบหมวด "'+name+'" และข้อความทั้งหมดหรือไม่?')) return;
-      // delete items in this category
-      const items = await getByIndex('items','byCategory', selectedId);
-      for(const it of items){ await remove('items', it.id); }
-      await remove('categories', selectedId);
-      const left = (await listCategories());
-      selectedId = left[0]?.id || null; localStorage.setItem('snippet.selectedId', selectedId||'');
-      render(); toast('ลบหมวดหมู่แล้ว');
-    }
+        // --- Category Management ---
+        window.addCategory = async function() {
+            const input = document.getElementById('categoryInput');
+            const categoryName = input.value.trim();
+            if (categoryName === '') {
+                showToast('กรุณาใส่ชื่อหมวดหมู่', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('addCategoryBtn');
+            btn.disabled = true;
+            btn.textContent = 'กำลังเพิ่ม...';
 
-    // ---------------- Message Logic ----------------
-    async function addMessage(text){
-      if(!selectedId) return toast('ยังไม่ได้เลือกหมวดหมู่');
-      text=(text||'').trim(); if(!text) return toast('โปรดพิมพ์ข้อความ');
-      await put('items',{id:uid(), categoryId:selectedId, text, createdAt:nowISO(), updatedAt:null});
-      els.messageInput.value='';
-      renderList(); toast('บันทึกแล้ว');
-    }
+            try {
+                const categoriesCol = collection(db, 'artifacts', appId, 'users', userId, 'categories');
+                await addDoc(categoriesCol, {
+                    name: categoryName,
+                    textCount: 0,
+                    createdAt: new Date()
+                });
+                input.value = '';
+                showToast('เพิ่มหมวดหมู่สำเร็จ!');
+            } catch (error) {
+                console.error("Error adding category: ", error);
+                showToast('เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'เพิ่ม';
+            }
+        }
 
-    async function updateMessage(id, newText){
-      const t = await tx(['items'],'readwrite');
-      const s = t.objectStore('items');
-      const g = s.get(id);
-      g.onsuccess = ()=>{ const item=g.result; if(!item) return; item.text=newText; item.updatedAt=nowISO(); s.put(item); };
-      g.onerror = ()=>console.warn(g.error);
-      t.oncomplete = ()=>{ renderList(); toast('แก้ไขแล้ว'); };
-    }
+        window.selectCategory = function(categoryId, categoryName) {
+            selectedCategory = { id: categoryId, name: categoryName };
+            
+            document.getElementById('selectedCategoryName').textContent = `(${categoryName})`;
+            document.getElementById('noCategoryMessage').classList.add('hidden');
+            document.getElementById('addTextSection').classList.remove('hidden');
+            document.getElementById('textsList').classList.remove('hidden');
+            
+            // Re-render categories to highlight the active one
+            document.querySelectorAll('.category-item').forEach(el => {
+                if (el.dataset.id === categoryId) {
+                    el.classList.add('bg-indigo-50', 'border-indigo-300');
+                    el.querySelector('button').classList.add('text-indigo-600');
+                } else {
+                    el.classList.remove('bg-indigo-50', 'border-indigo-300');
+                    el.querySelector('button').classList.remove('text-indigo-600');
+                }
+            });
+            
+            listenForTexts();
+        }
 
-    async function deleteMessage(id){
-      if(!confirm('ลบข้อความนี้หรือไม่?')) return;
-      await remove('items', id); renderList(); toast('ลบแล้ว');
-    }
+        window.deleteCategory = async function(event, categoryId, categoryName) {
+            event.stopPropagation(); // Prevent selectCategory from firing
+            if (!confirm(`คุณต้องการลบหมวดหมู่ "${categoryName}" และข้อความทั้งหมดใช่หรือไม่?`)) return;
 
-    async function copyMessage(text){
-      try{ await navigator.clipboard.writeText(text); toast('คัดลอกแล้ว'); }
-      catch(e){
-        const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
-        try{ document.execCommand('copy'); toast('คัดลอกแล้ว'); }catch(_) { alert('คัดลอกไม่สำเร็จ'); }
-        ta.remove();
-      }
-    }
+            try {
+                // Delete all texts in the subcollection first
+                const textsColRef = collection(db, 'artifacts', appId, 'users', userId, 'categories', categoryId, 'texts');
+                const textsSnapshot = await getDocs(textsColRef);
+                const batch = writeBatch(db);
+                textsSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
 
-    // ---------------- Export / Import ----------------
-    async function exportAll(){
-      const cats = await getAll('categories');
-      const items = await getAll('items');
-      const data = {schema:'snippet-v1', exportedAt: nowISO(), categories: cats, items: items};
-      const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().replace(/[:T]/g,'-').split('.')[0];
-      a.download = `snippets-backup-${ts}.json`;
-      a.href = url; a.click(); URL.revokeObjectURL(url);
-      toast('สำรองข้อมูลเป็นไฟล์ .json แล้ว');
-    }
+                // Then delete the category document
+                const categoryDocRef = doc(db, 'artifacts', appId, 'users', userId, 'categories', categoryId);
+                await deleteDoc(categoryDocRef);
 
-    async function importAll(file){
-      if(!file) return;
-      const text = await file.text();
-      let data=null; try{ data=JSON.parse(text);}catch(e){ alert('ไฟล์ไม่ใช่ JSON'); return; }
-      if(data?.schema!=='snippet-v1' || !Array.isArray(data.categories) || !Array.isArray(data.items)){
-        alert('รูปแบบไฟล์ไม่ถูกต้อง'); return;
-      }
-      if(!confirm('การกู้คืนจะ "แทนที่" ข้อมูลเดิมทั้งหมด คุณแน่ใจหรือไม่?')) return;
-      const db = await openDB();
-      await new Promise((res,rej)=>{
-        const t = db.transaction(['categories','items'],'readwrite');
-        t.objectStore('categories').clear();
-        t.objectStore('items').clear();
-        t.oncomplete=()=>res(); t.onerror=()=>rej(t.error);
-      });
-      for(const c of data.categories){ await put('categories', c); }
-      for(const it of data.items){ await put('items', it); }
-      // restore selection if possible
-      selectedId = data.categories[0]?.id || null; localStorage.setItem('snippet.selectedId', selectedId||'');
-      render(); toast('กู้คืนข้อมูลแล้ว');
-    }
+                if (selectedCategory && selectedCategory.id === categoryId) {
+                    selectedCategory = null;
+                    document.getElementById('selectedCategoryName').textContent = '';
+                    document.getElementById('noCategoryMessage').classList.remove('hidden');
+                    document.getElementById('addTextSection').classList.add('hidden');
+                    document.getElementById('textsList').classList.add('hidden');
+                    unsubscribeTexts();
+                }
+                showToast('ลบหมวดหมู่สำเร็จ!');
+            } catch (error) {
+                console.error("Error deleting category:", error);
+                showToast('เกิดข้อผิดพลาดในการลบหมวดหมู่', 'error');
+            }
+        }
 
-    // ---------------- Render ----------------
-    async function render(){
-      const cats = await listCategories();
-      const chipWrap = els.categoryChips; chipWrap.innerHTML='';
-      if(!selectedId && cats.length>0){ selectedId = cats[0].id; localStorage.setItem('snippet.selectedId', selectedId); }
-      if(cats.length===0){
-        els.messageCardTitle.textContent='💬 เลือกหมวดหมู่เพื่อดูข้อความ';
-        els.messagePanel.style.display='none';
-        els.placeholder.style.display='flex';
-      } else {
-        els.placeholder.style.display='none';
-        els.messagePanel.style.display='flex';
-      }
-      for(const c of cats){
-        const chip = document.createElement('div'); chip.className='chip'+(selectedId===c.id?' active':'');
-        const span = document.createElement('span'); span.textContent=c.name;
-        const btnDel = document.createElement('button'); btnDel.title='ลบหมวด'; btnDel.innerHTML='✕';
-        btnDel.onclick=(e)=>{ e.stopPropagation(); if(selectedId!==c.id){ if(!confirm('ลบหมวด "'+c.name+'" หรือไม่?')) return; remove('categories', c.id).then(()=>render()); } else { deleteCategory(); } };
-        chip.append(span, btnDel);
-        chip.onclick=()=>{ selectedId=c.id; localStorage.setItem('snippet.selectedId',selectedId); render(); };
-        chipWrap.appendChild(chip);
-      }
+        // --- Text Management ---
+        window.addText = async function() {
+            if (!selectedCategory) return;
+            const content = document.getElementById('textContentInput').value.trim();
+            if (content === '') {
+                showToast('กรุณาใส่เนื้อหาข้อความ', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('addTextBtn');
+            btn.disabled = true;
+            btn.textContent = 'กำลังเพิ่ม...';
 
-      if(selectedId){
-        const cats2 = await listCategories();
-        const name = cats2.find(x=>x.id===selectedId)?.name || '';
-        els.messageCardTitle.textContent = '🗂️ หมวด: '+name;
-        renderList();
-      } else {
-        els.messageList.innerHTML='';
-      }
-    }
+            try {
+                const textsCol = collection(db, 'artifacts', appId, 'users', userId, 'categories', selectedCategory.id, 'texts');
+                await addDoc(textsCol, {
+                    content: content,
+                    createdAt: new Date()
+                });
+                document.getElementById('textContentInput').value = '';
+                showToast('เพิ่มข้อความสำเร็จ!');
+            } catch (error) {
+                console.error("Error adding text: ", error);
+                showToast('เกิดข้อผิดพลาดในการเพิ่มข้อความ', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'เพิ่มข้อความ';
+            }
+        }
+        
+        window.copyText = function(content) {
+            // A more robust way to copy to clipboard that works in secure contexts
+            const textArea = document.createElement("textarea");
+            textArea.value = content;
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('คัดลอกข้อความสำเร็จ!');
+            } catch (err) {
+                showToast('ไม่สามารถคัดลอกได้', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
 
-    async function renderList(){
-      if(!selectedId){ els.messageList.innerHTML=''; return; }
-      const q = els.searchInput.value.trim().toLowerCase();
-      const all = await getByIndex('items','byCategory', selectedId);
-      all.sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
-      const items = q? all.filter(x=>x.text.toLowerCase().includes(q)) : all;
-      els.countPill.textContent = items.length+' รายการ';
-      const wrap = els.messageList; wrap.innerHTML='';
-      if(items.length===0){ const d=document.createElement('div'); d.className='placeholder'; d.innerHTML='<div style="font-size:42px">🔎</div><div>ยังไม่มีข้อความในเงื่อนไขนี้</div>'; wrap.appendChild(d); return; }
-      for(const it of items){
-        const div = document.createElement('div'); div.className='item';
-        const head = document.createElement('div'); head.className='item-header';
-        const time = document.createElement('div'); time.className='stamp'; time.textContent=(it.updatedAt? 'แก้ไขล่าสุด '+fmt(it.updatedAt)+' · ' : '') + 'สร้าง ' + fmt(it.createdAt);
-        const actions = document.createElement('div'); actions.className='item-actions';
-        const btnEdit = makeBtn('แก้ไข','btn-warning');
-        const btnCopy = makeBtn('คัดลอก','btn-ghost');
-        const btnDel  = makeBtn('ลบ','btn-danger');
-        actions.append(btnEdit, btnCopy, btnDel);
-        head.append(time, actions);
-        const pre = document.createElement('pre'); pre.textContent=it.text;
-        div.append(head, pre);
-        wrap.appendChild(div);
-        // events
-        btnCopy.onclick=()=>copyMessage(it.text);
-        btnDel.onclick=()=>deleteMessage(it.id);
-        btnEdit.onclick=()=>startEdit(div,it);
-      }
-    }
+        window.editText = function(textId, currentContent) {
+            editingTextId = textId;
+            document.getElementById('editContentInput').value = currentContent;
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
 
-    function makeBtn(label, cls){ const b=document.createElement('button'); b.className='btn '+cls+' btn-big'; b.textContent=label; return b; }
+        window.closeEditModal = function() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+            editingTextId = null;
+        }
 
-    function startEdit(container, item){
-      container.innerHTML='';
-      const head = document.createElement('div'); head.className='item-header';
-      const info = document.createElement('div'); info.className='stamp'; info.textContent='กำลังแก้ไข · ' + (item.updatedAt? 'แก้ไข '+fmt(item.updatedAt): 'สร้าง '+fmt(item.createdAt));
-      const actions = document.createElement('div'); actions.className='item-actions';
-      const btnSave = makeBtn('บันทึก','btn-ok');
-      const btnCancel = makeBtn('ยกเลิก','btn-ghost');
-      actions.append(btnSave, btnCancel); head.append(info, actions);
-      const ta = document.createElement('textarea'); ta.value=item.text; ta.style.minHeight='140px';
-      container.append(head, ta); ta.focus();
-      btnSave.onclick=()=>{ const v=ta.value.trim(); if(!v) return toast('ข้อความห้ามว่าง'); updateMessage(item.id, v); };
-      btnCancel.onclick=()=>renderList();
-    }
+        window.saveEdit = async function() {
+            if (!editingTextId || !selectedCategory) return;
+            const content = document.getElementById('editContentInput').value.trim();
+            if (content === '') {
+                showToast('กรุณาใส่เนื้อหาข้อความ', 'error');
+                return;
+            }
+            
+            try {
+                const textDocRef = doc(db, 'artifacts', appId, 'users', userId, 'categories', selectedCategory.id, 'texts', editingTextId);
+                await updateDoc(textDocRef, { content: content });
+                closeEditModal();
+                showToast('แก้ไขข้อความสำเร็จ!');
+            } catch (error) {
+                console.error("Error saving edit:", error);
+                showToast('เกิดข้อผิดพลาดในการบันทึก', 'error');
+            }
+        }
 
-    // ---------------- Events ----------------
-    els.addCategoryBtn.addEventListener('click', ()=>addCategory(els.categoryInput.value));
-    els.categoryInput.addEventListener('keydown', e=>{ if(e.key==='Enter') addCategory(els.categoryInput.value); });
-    els.saveMsgBtn.addEventListener('click', ()=>addMessage(els.messageInput.value));
-    els.clearMsgBtn.addEventListener('click', ()=>{ els.messageInput.value=''; els.messageInput.focus(); });
-    els.deleteCatBtn.addEventListener('click', deleteCategory);
-    els.searchInput.addEventListener('input', renderList);
-    els.exportBtn.addEventListener('click', exportAll);
-    els.importBtn.addEventListener('click', ()=> els.importFile.click());
-    els.importFile.addEventListener('change', e=> importAll(e.target.files[0]));
+        window.deleteText = async function(textId) {
+            if (!selectedCategory) return;
+            if (confirm('คุณต้องการลบข้อความนี้หรือไม่?')) {
+                try {
+                    const textDocRef = doc(db, 'artifacts', appId, 'users', userId, 'categories', selectedCategory.id, 'texts', textId);
+                    await deleteDoc(textDocRef);
+                    showToast('ลบข้อความสำเร็จ!');
+                } catch (error) {
+                    console.error("Error deleting text:", error);
+                    showToast('เกิดข้อผิดพลาดในการลบ', 'error');
+                }
+            }
+        }
 
-    // ---------------- Startup ----------------
-    openDB().then(render).catch(err=>{ console.error(err); els.catError.textContent='เกิดข้อผิดพลาดในการเชื่อมต่อ IndexedDB'; els.catError.style.display='block'; });
-  })();
-  </script></body>
+        // --- Render Functions ---
+        function renderCategories(categories) {
+            const container = document.getElementById('categoriesList');
+            document.getElementById('categoryLoader').style.display = 'none';
+            if (!categories || categories.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">ยังไม่มีหมวดหมู่</p>';
+                return;
+            }
+            container.innerHTML = categories.map(category => `
+                <div data-id="${category.id}" class="category-item flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer ${selectedCategory && selectedCategory.id === category.id ? 'bg-indigo-50 border-indigo-300' : ''}" onclick="selectCategory('${category.id}', '${escapeHTML(category.name)}')">
+                    <button class="flex-1 text-left font-medium pointer-events-none ${selectedCategory && selectedCategory.id === category.id ? 'text-indigo-600' : 'text-gray-700'}">
+                        ${escapeHTML(category.name)}
+                    </button>
+                    <button onclick="event.stopPropagation(); deleteCategory(event, '${category.id}', '${escapeHTML(category.name)}')" class="text-red-500 hover:text-red-700 ml-2 p-1" title="ลบหมวดหมู่">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function renderTexts(texts) {
+            const container = document.getElementById('textsList');
+            document.getElementById('textLoader').style.display = 'none';
+            if (!texts || texts.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">ยังไม่มีข้อความในหมวดหมู่นี้</p>';
+                return;
+            }
+            container.innerHTML = texts.map(textItem => `
+                <div class="text-item bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <p class="text-gray-700 whitespace-pre-wrap">${escapeHTML(textItem.content)}</p>
+                        </div>
+                        <div class="flex gap-2 ml-4">
+                            <button onclick="copyText(\`${escapeForTemplateLiteral(textItem.content)}\`)" class="text-blue-500 hover:text-blue-700 p-1" title="คัดลอก">📋</button>
+                            <button onclick="editText('${textItem.id}', \`${escapeForTemplateLiteral(textItem.content)}\`)" class="text-green-500 hover:text-green-700 p-1" title="แก้ไข">✏️</button>
+                            <button onclick="deleteText('${textItem.id}')" class="text-red-500 hover:text-red-700 p-1" title="ลบ">🗑️</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">สร้างเมื่อ: ${textItem.createdAt ? new Date(textItem.createdAt.seconds * 1000).toLocaleString('th-TH') : 'ไม่ระบุ'}</p>
+                </div>
+            `).join('');
+        }
+
+        // --- Utility Functions ---
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            
+            toast.className = `fixed top-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg toast z-50 ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+            
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('categoryInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addCategory();
+            });
+            document.getElementById('textContentInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    addText();
+                }
+            });
+            document.getElementById('editModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeEditModal();
+            });
+        }
+        
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+
+        function escapeForTemplateLiteral(str) {
+            return str.replace(/`/g, '\\`').replace(/\${/g, '\\${');
+        }
+
+    </script>
+</body>
 </html>
