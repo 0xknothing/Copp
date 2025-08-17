@@ -1,0 +1,495 @@
+<!DOCTYPE html><html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ระบบจัดการข้อความตามหมวดหมู่ (IndexedDB)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Sarabun',sans-serif}
+    .toast{transform:translateX(120%);transition:transform .3s ease-in-out;visibility:hidden}
+    .toast.show{transform:translateX(0);visibility:visible}
+    .modal{backdrop-filter:blur(4px)}
+    .category-item:hover{transform:translateY(-2px);transition:transform .2s ease}
+    .text-item{transition:all .3s ease}
+    .text-item:hover{box-shadow:0 8px 25px rgba(0,0,0,.1)}
+    .loader{border-top-color:#4f46e5;animation:spin 1s ease-in-out infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-lg border-b-4 border-indigo-500">
+    <div class="container mx-auto px-6 py-4">
+      <h1 class="text-3xl font-bold text-gray-800 text-center">📝 ระบบจัดการข้อความตามหมวดหมู่</h1>
+      <p class="text-center text-sm text-gray-500 mt-1">เวอร์ชัน IndexedDB — ไม่ต้องต่ออินเทอร์เน็ต/ไม่ต้องใช้ Firebase</p>
+    </div>
+  </header>  <div class="container mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Categories Section -->
+      <div class="lg:col-span-1">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold text-gray-800 flex items-center">📁 หมวดหมู่</h2>
+            <button id="exportBtn" class="hidden sm:inline-flex bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-sm">สำรอง (JSON)</button>
+          </div>
+          <!-- Add Category Form -->
+          <div class="mb-6">
+            <div class="flex gap-2">
+              <input type="text" id="categoryInput" placeholder="ชื่อหมวดหมู่ใหม่..." class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+              <button id="addCategoryBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold text-base">เพิ่ม</button>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <label for="importFile" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-2 rounded-lg text-sm cursor-pointer">กู้คืน (Import)</label>
+              <input id="importFile" type="file" accept="application/json" class="hidden" />
+              <button id="clearAllBtn" class="ml-auto bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm">ล้างข้อมูลทั้งหมด</button>
+            </div>
+          </div>
+          <!-- Categories List -->
+          <div id="categoriesList" class="space-y-2">
+            <div id="categoryLoader" class="flex justify-center py-4"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10"></div></div>
+          </div>
+        </div>
+      </div><!-- Text Management Section -->
+  <div class="lg:col-span-2">
+    <div class="bg-white rounded-xl shadow-lg p-6 min-h-[300px]">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-gray-800 flex items-center">📄 ข้อความ <span id="selectedCategoryName" class="ml-2 text-indigo-600 font-normal"></span></h2>
+      </div>
+      <!-- Add Text Form -->
+      <div id="addTextSection" class="mb-6 hidden">
+        <div class="space-y-3">
+          <textarea id="textContentInput" placeholder="เนื้อหาข้อความ... (Ctrl+Enter เพื่อเพิ่ม)" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"></textarea>
+          <button id="addTextBtn" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold">เพิ่มข้อความ</button>
+        </div>
+      </div>
+      <!-- No Category Selected Message -->
+      <div id="noCategoryMessage" class="text-center py-12">
+        <div class="text-6xl mb-4">📂</div>
+        <p class="text-gray-500 text-lg">เลือกหมวดหมู่เพื่อเริ่มจัดการข้อความ</p>
+      </div>
+      <!-- Text List -->
+      <div id="textsList" class="space-y-4 hidden">
+        <div id="textLoader" class="hidden justify-center py-8"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-10 w-10"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>  <!-- Edit Modal -->  <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 modal hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4">แก้ไขข้อความ</h3>
+      <div class="space-y-3">
+        <textarea id="editContentInput" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none resize-none"></textarea>
+        <div class="flex gap-3 justify-end">
+          <button id="cancelEditBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium">ยกเลิก</button>
+          <button id="saveEditBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">บันทึก</button>
+        </div>
+      </div>
+    </div>
+  </div>  <!-- Toast Notification -->  <div id="toast" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg toast z-50">
+    <span id="toastMessage"></span>
+  </div>  <script>
+    // ===================== IndexedDB Layer =====================
+    const DB_NAME = 'text-manager-db';
+    const DB_VERSION = 1;
+    const STORE_CATEGORIES = 'categories';
+    const STORE_TEXTS = 'texts';
+
+    let db = null;
+
+    function openDB(){
+      return new Promise((resolve, reject)=>{
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e)=>{
+          const db = e.target.result;
+          if(!db.objectStoreNames.contains(STORE_CATEGORIES)){
+            const cat = db.createObjectStore(STORE_CATEGORIES, { keyPath:'id', autoIncrement:true });
+            cat.createIndex('name','name',{unique:false});
+          }
+          if(!db.objectStoreNames.contains(STORE_TEXTS)){
+            const txt = db.createObjectStore(STORE_TEXTS, { keyPath:'id', autoIncrement:true });
+            txt.createIndex('categoryId','categoryId',{unique:false});
+            txt.createIndex('createdAt','createdAt',{unique:false});
+          }
+        };
+        req.onsuccess = ()=> resolve(req.result);
+        req.onerror = ()=> reject(req.error);
+      });
+    }
+
+    function tx(storeNames, mode='readonly'){
+      return db.transaction(storeNames, mode);
+    }
+
+    // Categories CRUD
+    async function addCategoryDB(name){
+      const t = tx([STORE_CATEGORIES],'readwrite');
+      const store = t.objectStore(STORE_CATEGORIES);
+      return new Promise((res,rej)=>{
+        const req = store.add({ name, createdAt: Date.now() });
+        req.onsuccess = ()=> res(req.result);
+        req.onerror = ()=> rej(req.error);
+      });
+    }
+
+    async function listCategoriesDB(){
+      const t = tx([STORE_CATEGORIES]);
+      const store = t.objectStore(STORE_CATEGORIES);
+      return new Promise((res,rej)=>{
+        const arr = [];
+        const req = store.openCursor();
+        req.onsuccess = (e)=>{
+          const cursor = e.target.result;
+          if(cursor){ arr.push(cursor.value); cursor.continue(); }
+          else res(arr);
+        };
+        req.onerror = ()=> rej(req.error);
+      });
+    }
+
+    async function deleteCategoryDB(id){
+      // delete texts under category then category
+      const t = tx([STORE_TEXTS, STORE_CATEGORIES], 'readwrite');
+      const textStore = t.objectStore(STORE_TEXTS);
+      const index = textStore.index('categoryId');
+      return new Promise((res,rej)=>{
+        const range = IDBKeyRange.only(id);
+        const delPromises = [];
+        index.openCursor(range).onsuccess = (e)=>{
+          const cursor = e.target.result;
+          if(cursor){ delPromises.push(cursor.delete()); cursor.continue(); }
+          else{
+            // after texts deleted, delete category
+            t.objectStore(STORE_CATEGORIES).delete(id).onsuccess = ()=> res();
+          }
+        };
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    // Texts CRUD
+    async function addTextDB(categoryId, content){
+      const t = tx([STORE_TEXTS],'readwrite');
+      const store = t.objectStore(STORE_TEXTS);
+      return new Promise((res,rej)=>{
+        const req = store.add({ categoryId, content, createdAt: Date.now() });
+        req.onsuccess = ()=> res(req.result);
+        req.onerror = ()=> rej(req.error);
+      });
+    }
+
+    async function listTextsDB(categoryId){
+      const t = tx([STORE_TEXTS]);
+      const idx = t.objectStore(STORE_TEXTS).index('categoryId');
+      return new Promise((res,rej)=>{
+        const range = IDBKeyRange.only(categoryId);
+        const items = [];
+        idx.openCursor(range, 'prev').onsuccess = (e)=>{
+          const cursor = e.target.result;
+          if(cursor){ items.push(cursor.value); cursor.continue(); }
+          else{
+            // sort newest first
+            items.sort((a,b)=> b.createdAt - a.createdAt);
+            res(items);
+          }
+        };
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    async function updateTextDB(id, content){
+      const t = tx([STORE_TEXTS],'readwrite');
+      const store = t.objectStore(STORE_TEXTS);
+      return new Promise((res,rej)=>{
+        store.get(id).onsuccess = (e)=>{
+          const data = e.target.result; if(!data) return rej(new Error('not found'));
+          data.content = content;
+          store.put(data).onsuccess = ()=> res();
+        };
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    async function deleteTextDB(id){
+      const t = tx([STORE_TEXTS],'readwrite');
+      return new Promise((res,rej)=>{
+        t.objectStore(STORE_TEXTS).delete(id).onsuccess = ()=> res();
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    async function countTextsByCategoryDB(categoryId){
+      const t = tx([STORE_TEXTS]);
+      const idx = t.objectStore(STORE_TEXTS).index('categoryId');
+      return new Promise((res,rej)=>{
+        const range = IDBKeyRange.only(categoryId);
+        let c = 0;
+        idx.openCursor(range).onsuccess = (e)=>{
+          const cursor = e.target.result; if(cursor){ c++; cursor.continue(); } else res(c);
+        };
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    // Backup & Restore
+    async function exportAllDB(){
+      const [cats, texts] = await Promise.all([listCategoriesDB(), listAllTextsDB()]);
+      return { version: 1, exportedAt: new Date().toISOString(), categories: cats, texts };
+    }
+    async function listAllTextsDB(){
+      const t = tx([STORE_TEXTS]);
+      const store = t.objectStore(STORE_TEXTS);
+      return new Promise((res,rej)=>{
+        const arr=[]; store.openCursor().onsuccess=(e)=>{const cur=e.target.result; if(cur){arr.push(cur.value); cur.continue();} else res(arr)};
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+    async function clearAllDB(){
+      const t = tx([STORE_TEXTS, STORE_CATEGORIES], 'readwrite');
+      return Promise.all([
+        new Promise((res,rej)=>{ t.objectStore(STORE_TEXTS).clear().onsuccess=()=>res(); }),
+        new Promise((res,rej)=>{ t.objectStore(STORE_CATEGORIES).clear().onsuccess=()=>res(); })
+      ]);
+    }
+    async function importAllDB(payload){
+      if(!payload || !Array.isArray(payload.categories) || !Array.isArray(payload.texts)) throw new Error('ไฟล์ไม่ถูกต้อง');
+      await clearAllDB();
+      // Insert keeping original IDs if exist (fallback to auto)
+      await new Promise((res,rej)=>{
+        const t = tx([STORE_CATEGORIES, STORE_TEXTS], 'readwrite');
+        const cs = t.objectStore(STORE_CATEGORIES);
+        const ts = t.objectStore(STORE_TEXTS);
+        // Categories
+        (payload.categories||[]).forEach(c=>{
+          if(c.id==null){ cs.add({ name:c.name, createdAt:c.createdAt||Date.now() }); }
+          else{ cs.put(c); }
+        });
+        // Texts
+        (payload.texts||[]).forEach(x=>{
+          if(x.id==null){ ts.add({ categoryId:x.categoryId, content:x.content, createdAt:x.createdAt||Date.now() }); }
+          else{ ts.put(x); }
+        });
+        t.oncomplete = ()=> res();
+        t.onerror = ()=> rej(t.error);
+      });
+    }
+
+    // ===================== UI Layer =====================
+    let selectedCategory = null; // {id, name}
+
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      db = await openDB();
+      bindUI();
+      await refreshCategories();
+    });
+
+    function bindUI(){
+      qs('#addCategoryBtn').addEventListener('click', onAddCategory);
+      qs('#categoryInput').addEventListener('keypress', (e)=>{ if(e.key==='Enter') onAddCategory(); });
+      qs('#addTextBtn').addEventListener('click', onAddText);
+      qs('#textContentInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter' && e.ctrlKey) onAddText(); });
+      qs('#cancelEditBtn').addEventListener('click', closeEditModal);
+      qs('#saveEditBtn').addEventListener('click', saveEdit);
+      qs('#exportBtn').addEventListener('click', onExportJSON);
+      qs('#importFile').addEventListener('change', onImportJSON);
+      qs('#clearAllBtn').addEventListener('click', onClearAll);
+      // Click outside modal to close
+      qs('#editModal').addEventListener('click', (e)=>{ if(e.target===e.currentTarget) closeEditModal(); });
+    }
+
+    // ------- Category UI -------
+    async function refreshCategories(){
+      setCategoryLoader(true);
+      const cats = await listCategoriesDB();
+      const container = qs('#categoriesList');
+      setCategoryLoader(false);
+      if(!cats.length){ container.innerHTML = '<p class="text-gray-500 text-center py-4">ยังไม่มีหมวดหมู่</p>'; return; }
+      // Get counts in parallel
+      const counts = await Promise.all(cats.map(c=>countTextsByCategoryDB(c.id)));
+      container.innerHTML = cats.map((c,i)=> renderCategoryItem(c, counts[i])).join('');
+    }
+
+    function renderCategoryItem(c, count){
+      const active = selectedCategory && selectedCategory.id===c.id;
+      return `
+        <div data-id="${c.id}" class="category-item flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer ${active?'bg-indigo-50 border-indigo-300':'border-gray-200'}" onclick="selectCategory(${c.id}, '${escapeHTML(c.name)}')">
+          <button class="flex-1 text-left font-medium pointer-events-none ${active?'text-indigo-600':'text-gray-700'}">
+            ${escapeHTML(c.name)} <span class="ml-1 text-xs text-gray-400">(${count})</span>
+          </button>
+          <button onclick="event.stopPropagation(); deleteCategory(event, ${c.id}, '${escapeHTML(c.name)}')" class="text-red-500 hover:text-red-700 ml-2 p-1" title="ลบหมวดหมู่">🗑️</button>
+        </div>`;
+    }
+
+    function setCategoryLoader(show){
+      qs('#categoryLoader').style.display = show? 'flex':'none';
+    }
+
+    async function onAddCategory(){
+      const input = qs('#categoryInput');
+      const name = input.value.trim();
+      if(!name) return showToast('กรุณาใส่ชื่อหมวดหมู่','error');
+      const btn = qs('#addCategoryBtn'); btn.disabled=true; btn.textContent='กำลังเพิ่ม...';
+      try{ await addCategoryDB(name); input.value=''; showToast('เพิ่มหมวดหมู่สำเร็จ!'); await refreshCategories(); }
+      catch(e){ console.error(e); showToast('เกิดข้อผิดพลาดในการเพิ่มหมวดหมู่','error'); }
+      finally{ btn.disabled=false; btn.textContent='เพิ่ม'; }
+    }
+
+    window.selectCategory = async function(id, name){
+      selectedCategory = { id, name };
+      qs('#selectedCategoryName').textContent = `(${name})`;
+      qs('#noCategoryMessage').classList.add('hidden');
+      qs('#addTextSection').classList.remove('hidden');
+      qs('#textsList').classList.remove('hidden');
+      // highlight
+      await refreshCategories();
+      await refreshTexts();
+    }
+
+    window.deleteCategory = async function(evt, id, name){
+      evt.stopPropagation();
+      if(!confirm(`คุณต้องการลบหมวดหมู่ "${name}" และข้อความทั้งหมดใช่หรือไม่?`)) return;
+      try{ await deleteCategoryDB(id); if(selectedCategory && selectedCategory.id===id){ selectedCategory=null; resetTextPanel(); } showToast('ลบหมวดหมู่สำเร็จ!'); await refreshCategories(); }
+      catch(e){ console.error(e); showToast('เกิดข้อผิดพลาดในการลบหมวดหมู่','error'); }
+    }
+
+    // ------- Text UI -------
+    function resetTextPanel(){
+      qs('#selectedCategoryName').textContent='';
+      qs('#noCategoryMessage').classList.remove('hidden');
+      qs('#addTextSection').classList.add('hidden');
+      qs('#textsList').classList.add('hidden');
+      qs('#textsList').innerHTML='';
+    }
+
+    async function refreshTexts(){
+      if(!selectedCategory) return;
+      setTextLoader(true);
+      const items = await listTextsDB(selectedCategory.id);
+      const container = qs('#textsList');
+      setTextLoader(false);
+      if(!items.length){ container.innerHTML = '<p class="text-gray-500 text-center py-8">ยังไม่มีข้อความในหมวดหมู่นี้</p>'; return; }
+      container.innerHTML = items.map(renderTextItem).join('');
+    }
+
+    function renderTextItem(item){
+      const created = item.createdAt ? new Date(item.createdAt).toLocaleString('th-TH') : 'ไม่ระบุ';
+      return `
+        <div class="text-item bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div class="flex justify-between items-start mb-2">
+            <div class="flex-1">
+              <p class="text-gray-700 whitespace-pre-wrap">${escapeHTML(item.content)}</p>
+            </div>
+            <div class="flex gap-2 ml-4">
+              <button onclick="copyText(\`${escapeForTemplateLiteral(item.content)}\`)" class="text-blue-600 hover:text-blue-800 p-1 text-xl" title="คัดลอก">📋</button>
+              <button onclick="editText(${item.id}, \`${escapeForTemplateLiteral(item.content)}\`)" class="text-green-600 hover:text-green-800 p-1 text-xl" title="แก้ไข">✏️</button>
+              <button onclick="deleteText(${item.id})" class="text-red-600 hover:text-red-800 p-1 text-xl" title="ลบ">🗑️</button>
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 mt-2">สร้างเมื่อ: ${created}</p>
+        </div>`;
+    }
+
+    function setTextLoader(show){
+      const l = qs('#textLoader');
+      l.classList[show? 'remove':'add']('hidden');
+      l.classList.add('flex');
+    }
+
+    async function onAddText(){
+      if(!selectedCategory) return;
+      const ta = qs('#textContentInput');
+      const content = ta.value.trim();
+      if(!content) return showToast('กรุณาใส่เนื้อหาข้อความ','error');
+      const btn = qs('#addTextBtn'); btn.disabled=true; btn.textContent='กำลังเพิ่ม...';
+      try{ await addTextDB(selectedCategory.id, content); ta.value=''; showToast('เพิ่มข้อความสำเร็จ!'); await refreshTexts(); await refreshCategories(); }
+      catch(e){ console.error(e); showToast('เกิดข้อผิดพลาดในการเพิ่มข้อความ','error'); }
+      finally{ btn.disabled=false; btn.textContent='เพิ่มข้อความ'; }
+    }
+
+    window.copyText = async function(content){
+      try{
+        if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(content); }
+        else{ // fallback
+          const ta = document.createElement('textarea'); ta.value = content; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        showToast('คัดลอกข้อความสำเร็จ!');
+      }catch(err){ showToast('ไม่สามารถคัดลอกได้','error'); }
+    }
+
+    window.editText = function(id, current){
+      window.__editingTextId = id;
+      qs('#editContentInput').value = current;
+      qs('#editModal').classList.remove('hidden');
+      qs('#editModal').classList.add('flex');
+    }
+
+    function closeEditModal(){
+      qs('#editModal').classList.add('hidden');
+      qs('#editModal').classList.remove('flex');
+      window.__editingTextId = null;
+    }
+
+    async function saveEdit(){
+      const id = window.__editingTextId; if(!id || !selectedCategory) return;
+      const content = qs('#editContentInput').value.trim();
+      if(!content) return showToast('กรุณาใส่เนื้อหาข้อความ','error');
+      try{ await updateTextDB(id, content); closeEditModal(); showToast('แก้ไขข้อความสำเร็จ!'); await refreshTexts(); }
+      catch(e){ console.error(e); showToast('เกิดข้อผิดพลาดในการบันทึก','error'); }
+    }
+
+    window.deleteText = async function(id){
+      if(!selectedCategory) return;
+      if(!confirm('คุณต้องการลบข้อความนี้หรือไม่?')) return;
+      try{ await deleteTextDB(id); showToast('ลบข้อความสำเร็จ!'); await refreshTexts(); await refreshCategories(); }
+      catch(e){ console.error(e); showToast('เกิดข้อผิดพลาดในการลบ','error'); }
+    }
+
+    // ------- Backup/Restore UI -------
+    async function onExportJSON(){
+      try{
+        const data = await exportAllDB();
+        const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `text-manager-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('สำรองข้อมูลเป็นไฟล์ JSON แล้ว');
+      }catch(e){ console.error(e); showToast('สำรองข้อมูลไม่สำเร็จ','error'); }
+    }
+
+    async function onImportJSON(e){
+      const file = e.target.files?.[0]; if(!file) return;
+      try{
+        const text = await file.text();
+        const json = JSON.parse(text);
+        await importAllDB(json);
+        showToast('กู้คืนข้อมูลสำเร็จ!');
+        // refresh UI
+        selectedCategory = null; resetTextPanel(); await refreshCategories();
+      }catch(err){ console.error(err); showToast('ไฟล์ไม่ถูกต้องหรือกู้คืนล้มเหลว','error'); }
+      finally{ e.target.value = ''; }
+    }
+
+    async function onClearAll(){
+      if(!confirm('ยืนยันการล้างข้อมูลทั้งหมด? ข้อมูลทุกอย่างจะหายไป')) return;
+      await clearAllDB(); selectedCategory=null; resetTextPanel(); await refreshCategories(); showToast('ล้างข้อมูลเรียบร้อย');
+    }
+
+    // ------- Utils -------
+    function qs(sel){ return document.querySelector(sel); }
+    function showToast(message, type='success'){
+      const toast = qs('#toast'); const span = qs('#toastMessage');
+      span.textContent = message;
+      toast.className = `fixed top-4 right-4 text-white px-6 py-3 rounded-lg shadow-lg toast z-50 ${type==='error'?'bg-red-500':'bg-green-500'}`;
+      toast.classList.add('show'); setTimeout(()=> toast.classList.remove('show'), 2500);
+    }
+    function escapeHTML(str=''){
+      return String(str).replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;' }[m]));
+    }
+    function escapeForTemplateLiteral(str=''){
+      return String(str).replace(/`/g,'\\`').replace(/\$\{/g,'\\${');
+    }
+  </script></body>
+</html>
