@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดเก็บข้อความ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .toast { animation: toastSlide 0.3s ease-out; }
+        @keyframes toastSlide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast-exit { animation: toastExit 0.3s ease-out forwards; }
+        @keyframes toastExit {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="px-4 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-xl font-bold text-gray-800">📝 จัดเก็บข้อความ</h1>
+                <button id="addBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors">
+                    ➕ เพิ่ม
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="px-4 py-4 bg-white border-b">
+        <div class="space-y-3">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="🔍 ค้นหาข้อความ..." 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div class="flex items-center space-x-2">
+                <select id="categoryFilter" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">📂 ทุกหมวดหมู่</option>
+                </select>
+                <button id="manageCategoriesBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm">
+                    ⚙️ จัดการ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages List -->
+    <div id="messagesList" class="px-4 py-4 space-y-3">
+        <!-- Messages will be displayed here -->
+    </div>
+
+    <!-- Add/Edit Message Modal -->
+    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg w-full max-w-md slide-in">
+            <div class="p-4 border-b">
+                <h2 id="modalTitle" class="text-lg font-semibold">เพิ่มข้อความใหม่</h2>
+            </div>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ข้อความ</label>
+                    <textarea id="messageContent" rows="6" placeholder="พิมพ์ข้อความที่ต้องการเก็บไว้..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">หมวดหมู่</label>
+                    <select id="messageCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <option value="">เลือกหมวดหมู่</option>
+                    </select>
+                </div>
+            </div>
+            <div class="p-4 border-t flex space-x-2">
+                <button id="cancelBtn" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+                <button id="saveBtn" class="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg w-full max-w-md slide-in">
+            <div class="p-4 border-b">
+                <h2 class="text-lg font-semibold">จัดการหมวดหมู่</h2>
+            </div>
+            <div class="p-4">
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="newCategoryInput" placeholder="ชื่อหมวดหมู่ใหม่" 
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <button id="addCategoryBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">เพิ่ม</button>
+                </div>
+                <div id="categoriesList" class="space-y-2 max-h-60 overflow-y-auto">
+                    <!-- Categories will be listed here -->
+                </div>
+            </div>
+            <div class="p-4 border-t">
+                <button id="closeCategoryModalBtn" class="w-full px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg w-full max-w-sm slide-in">
+            <div class="p-4 text-center">
+                <div class="text-4xl mb-4">⚠️</div>
+                <h3 class="text-lg font-semibold mb-2">ยืนยันการลบ</h3>
+                <p id="deleteMessage" class="text-gray-600 mb-4">คุณแน่ใจหรือไม่ที่จะลบรายการนี้?</p>
+                <div class="flex space-x-2">
+                    <button id="cancelDeleteBtn" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">ยกเลิก</button>
+                    <button id="confirmDeleteBtn" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">ลบ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
+
+    <script>
+        class MessageManager {
+            constructor() {
+                // Load data from localStorage or set default values
+                this.messages = JSON.parse(localStorage.getItem('messages')) || [];
+                this.categories = JSON.parse(localStorage.getItem('categories')) || ['งาน', 'ส่วนตัว', 'ไอเดีย', 'สำคัญ'];
+                this.currentEditId = null;
+                this.deleteTarget = null;
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.renderMessages();
+                this.updateCategoryOptions();
+                this.renderCategories();
+            }
+
+            showToast(message, type = 'success') {
+                const toastContainer = document.getElementById('toastContainer');
+                const toastId = 'toast-' + Date.now();
+                
+                const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+                const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
+
+                const toast = document.createElement('div');
+                toast.id = toastId;
+                toast.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 max-w-sm`;
+                toast.innerHTML = `<span class="text-lg">${icons[type]}</span><span class="flex-1 text-sm">${message}</span>`;
+                toastContainer.appendChild(toast);
+
+                setTimeout(() => {
+                    const toastElement = document.getElementById(toastId);
+                    if (toastElement) {
+                        toastElement.classList.add('toast-exit');
+                        setTimeout(() => toastElement.remove(), 300);
+                    }
+                }, 3000);
+            }
+
+            bindEvents() {
+                document.getElementById('addBtn').addEventListener('click', () => this.openMessageModal());
+                document.getElementById('cancelBtn').addEventListener('click', () => this.closeMessageModal());
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveMessage());
+                document.getElementById('manageCategoriesBtn').addEventListener('click', () => this.openCategoryModal());
+                document.getElementById('closeCategoryModalBtn').addEventListener('click', () => this.closeCategoryModal());
+                document.getElementById('addCategoryBtn').addEventListener('click', () => this.addCategory());
+                document.getElementById('cancelDeleteBtn').addEventListener('click', () => this.closeDeleteModal());
+                document.getElementById('confirmDeleteBtn').addEventListener('click', () => this.confirmDelete());
+                document.getElementById('searchInput').addEventListener('input', () => this.renderMessages());
+                document.getElementById('categoryFilter').addEventListener('change', () => this.renderMessages());
+                document.getElementById('newCategoryInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.addCategory();
+                });
+            }
+
+            openMessageModal(message = null) {
+                this.currentEditId = message ? message.id : null;
+                document.getElementById('modalTitle').textContent = message ? 'แก้ไขข้อความ' : 'เพิ่มข้อความใหม่';
+                document.getElementById('messageContent').value = message ? message.content : '';
+                document.getElementById('messageCategory').value = message ? message.category : '';
+                document.getElementById('messageModal').classList.remove('hidden');
+            }
+
+            closeMessageModal() {
+                document.getElementById('messageModal').classList.add('hidden');
+                this.currentEditId = null;
+            }
+
+            saveMessage() {
+                const content = document.getElementById('messageContent').value.trim();
+                const category = document.getElementById('messageCategory').value;
+
+                if (!content) {
+                    this.showToast('กรุณากรอกข้อความ', 'warning');
+                    return;
+                }
+
+                if (this.currentEditId) {
+                    // Edit existing message
+                    const index = this.messages.findIndex(m => m.id === this.currentEditId);
+                    if (index !== -1) {
+                        this.messages[index] = {
+                            ...this.messages[index],
+                            content,
+                            category,
+                            updatedAt: new Date().toISOString()
+                        };
+                    }
+                } else {
+                    // Add new message
+                    const newMessage = {
+                        id: Date.now(),
+                        content,
+                        category,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.messages.unshift(newMessage); // Add to the beginning
+                }
+
+                this.saveToStorage();
+                this.renderMessages();
+                this.closeMessageModal();
+                this.showToast(this.currentEditId ? 'แก้ไขข้อความสำเร็จ' : 'เพิ่มข้อความสำเร็จ');
+            }
+
+            copyMessage(content) {
+                // Use execCommand for better compatibility in iframes
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    this.showToast('คัดลอกข้อความสำเร็จ');
+                } catch (err) {
+                    this.showToast('ไม่สามารถคัดลอกได้', 'error');
+                }
+                document.body.removeChild(textarea);
+            }
+
+            deleteMessage(id) {
+                const message = this.messages.find(m => m.id === id);
+                if (message) {
+                    const preview = message.content.length > 30 ? message.content.substring(0, 30) + '...' : message.content;
+                    this.deleteTarget = { type: 'message', id, name: preview };
+                    document.getElementById('deleteMessage').textContent = `คุณแน่ใจหรือไม่ที่จะลบข้อความ "${preview}"?`;
+                    document.getElementById('deleteModal').classList.remove('hidden');
+                }
+            }
+
+            openCategoryModal() {
+                document.getElementById('categoryModal').classList.remove('hidden');
+                this.renderCategories();
+            }
+
+            closeCategoryModal() {
+                document.getElementById('categoryModal').classList.add('hidden');
+            }
+
+            addCategory() {
+                const input = document.getElementById('newCategoryInput');
+                const name = input.value.trim();
+                
+                if (!name) {
+                    this.showToast('กรุณากรอกชื่อหมวดหมู่', 'warning');
+                    return;
+                }
+
+                if (this.categories.includes(name)) {
+                    this.showToast('หมวดหมู่นี้มีอยู่แล้ว', 'warning');
+                    return;
+                }
+
+                this.categories.push(name);
+                this.categories.sort((a, b) => a.localeCompare(b, 'th')); // Keep it sorted
+                input.value = '';
+                this.saveToStorage();
+                this.updateCategoryOptions();
+                this.renderCategories();
+                this.showToast('เพิ่มหมวดหมู่สำเร็จ');
+            }
+
+            deleteCategory(name) {
+                this.deleteTarget = { type: 'category', name };
+                document.getElementById('deleteMessage').textContent = `คุณแน่ใจหรือไม่ที่จะลบหมวดหมู่ "${name}"? ข้อความในหมวดหมู่นี้จะถูกย้ายไป "ไม่มีหมวดหมู่"`;
+                document.getElementById('deleteModal').classList.remove('hidden');
+            }
+
+            closeDeleteModal() {
+                document.getElementById('deleteModal').classList.add('hidden');
+                this.deleteTarget = null;
+            }
+
+            confirmDelete() {
+                if (!this.deleteTarget) return;
+
+                if (this.deleteTarget.type === 'message') {
+                    this.messages = this.messages.filter(m => m.id !== this.deleteTarget.id);
+                    this.showToast('ลบข้อความสำเร็จ');
+                } else if (this.deleteTarget.type === 'category') {
+                    this.categories = this.categories.filter(c => c !== this.deleteTarget.name);
+                    // Remove category from associated messages
+                    this.messages.forEach(m => {
+                        if (m.category === this.deleteTarget.name) {
+                            m.category = '';
+                        }
+                    });
+                    this.updateCategoryOptions();
+                    this.renderCategories();
+                    this.showToast('ลบหมวดหมู่สำเร็จ');
+                }
+
+                this.saveToStorage();
+                this.renderMessages(); // Re-render messages in case categories were changed
+                this.closeDeleteModal();
+            }
+
+            renderMessages() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const categoryFilter = document.getElementById('categoryFilter').value;
+                
+                let filteredMessages = this.messages.filter(message => {
+                    const matchesSearch = message.content.toLowerCase().includes(searchTerm);
+                    const matchesCategory = !categoryFilter || message.category === categoryFilter;
+                    return matchesSearch && matchesCategory;
+                });
+
+                const container = document.getElementById('messagesList');
+                
+                if (this.messages.length === 0) {
+                     container.innerHTML = `<div class="text-center py-12 text-gray-500"><div class="text-4xl mb-4">📝</div><p>ยังไม่มีข้อความ ลองเพิ่มดูสิ!</p></div>`;
+                } else if (filteredMessages.length === 0) {
+                    container.innerHTML = `<div class="text-center py-12 text-gray-500"><div class="text-4xl mb-4">🧐</div><p>ไม่พบข้อความที่ตรงกับการค้นหา</p></div>`;
+                } else {
+                    container.innerHTML = filteredMessages.map(message => {
+                        const escapedContent = this.escapeHtml(message.content);
+                        // Stringify the message object for the edit button's onclick handler
+                        const messageJsonString = this.escapeHtml(JSON.stringify(message));
+                        return `
+                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 fade-in">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-gray-800 leading-relaxed whitespace-pre-wrap break-words">${escapedContent}</p>
+                                </div>
+                                <div class="flex space-x-1 ml-2 flex-shrink-0">
+                                    <button onclick="window.messageManager.copyMessage('${escapedContent.replace(/'/g, `\\'`)}')" class="text-green-500 hover:text-green-700 p-1" title="คัดลอก">📋</button>
+                                    <button onclick='window.messageManager.openMessageModal(${messageJsonString})' class="text-blue-500 hover:text-blue-700 p-1" title="แก้ไข">✏️</button>
+                                    <button onclick="window.messageManager.deleteMessage(${message.id})" class="text-red-500 hover:text-red-700 p-1" title="ลบ">🗑️</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-start text-xs text-gray-500">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${this.escapeHtml(message.category) || 'ไม่มีหมวดหมู่'}</span>
+                            </div>
+                        </div>
+                    `}).join('');
+                }
+            }
+
+            renderCategories() {
+                const container = document.getElementById('categoriesList');
+                 if(this.categories.length === 0) {
+                    container.innerHTML = `<p class="text-center text-gray-500">ไม่มีหมวดหมู่</p>`;
+                    return;
+                }
+                container.innerHTML = this.categories.map(category => `
+                    <div class="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                        <span class="text-gray-800">${this.escapeHtml(category)}</span>
+                        <button onclick="window.messageManager.deleteCategory('${this.escapeHtml(category)}')" 
+                                class="text-red-500 hover:text-red-700 p-1">
+                            🗑️
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            updateCategoryOptions() {
+                const selects = [document.getElementById('messageCategory'), document.getElementById('categoryFilter')];
+                
+                selects.forEach((select, index) => {
+                    const currentValue = select.value;
+                    const defaultOption = index === 0 ? '<option value="">เลือกหมวดหมู่</option>' : '<option value="">📂 ทุกหมวดหมู่</option>';
+                    
+                    select.innerHTML = defaultOption + this.categories.map(category => 
+                        `<option value="${this.escapeHtml(category)}">${this.escapeHtml(category)}</option>`
+                    ).join('');
+                    
+                    // Try to preserve the selected value
+                    if (Array.from(select.options).some(opt => opt.value === currentValue)) {
+                        select.value = currentValue;
+                    }
+                });
+            }
+
+            saveToStorage() {
+                localStorage.setItem('messages', JSON.stringify(this.messages));
+                localStorage.setItem('categories', JSON.stringify(this.categories));
+            }
+
+            escapeHtml(text) {
+                if (typeof text !== 'string') return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // Initialize the app and make it globally accessible for onclick handlers
+        window.messageManager = new MessageManager();
+    </script>
+</body>
+</html>
