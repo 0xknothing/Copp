@@ -48,6 +48,7 @@
 
     <div id="messagesList" class="px-4 py-4 space-y-3"></div>
 
+    <!-- Modal: Message -->
     <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg w-full max-w-md slide-in">
             <div class="p-4 border-b">
@@ -72,6 +73,7 @@
         </div>
     </div>
 
+    <!-- Modal: Category -->
     <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg w-full max-w-md slide-in">
             <div class="p-4 border-b">
@@ -92,6 +94,7 @@
         </div>
     </div>
 
+    <!-- Modal: Delete -->
     <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-lg w-full max-w-sm slide-in">
             <div class="p-4 text-center">
@@ -106,6 +109,7 @@
         </div>
     </div>
 
+    <!-- Toast -->
     <div id="toastContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
 
     <script>
@@ -204,9 +208,7 @@
                 const content = document.getElementById('messageContent').value.trim();
                 const category = document.getElementById('messageCategory').value;
 
-                if (!content) {
-                    this.showToast('กรุณากรอกข้อความ','warning'); return;
-                }
+                if (!content) { this.showToast('กรุณากรอกข้อความ','warning'); return; }
 
                 if (this.currentEditId) {
                     const i = this.messages.findIndex(m => m.id === this.currentEditId);
@@ -227,9 +229,12 @@
                 this.showToast(this.currentEditId ? 'แก้ไขข้อความสำเร็จ' : 'เพิ่มข้อความสำเร็จ');
             }
 
-            copyMessage(content) {
-                navigator.clipboard.writeText(content).then(()=> this.showToast('คัดลอกข้อความสำเร็จ'))
-                .catch(()=> this.showToast('ไม่สามารถคัดลอกได้','error'));
+            copyMessageById(id) {
+                const m = this.messages.find(x => x.id === id);
+                const txt = m?.content ?? '';
+                navigator.clipboard.writeText(txt)
+                  .then(()=> this.showToast('คัดลอกข้อความสำเร็จ'))
+                  .catch(()=> this.showToast('ไม่สามารถคัดลอกได้','error'));
             }
 
             deleteMessage(id) {
@@ -237,7 +242,7 @@
                 if (!message) return;
                 const preview = message.content.length > 30 ? message.content.slice(0,30)+'...' : message.content;
                 this.deleteTarget = { type:'message', id, name: preview };
-                document.getElementById('deleteMessage').textContent = `คุณแน่ใจหรือไม่ที่จะลบข้อความ "${preview}"?`;
+                document.getElementById('deleteMessage').textContent = `คุณแน่ใจหรือไม่ที่จะลบข้อความ "${this.escapeHtml(preview)}"?`;
                 document.getElementById('deleteModal').classList.remove('hidden');
             }
 
@@ -264,234 +269,4 @@
             }
 
             editCategory(oldName) {
-                const newName = prompt('แก้ไขชื่อหมวดหมู่', oldName);
-                if (newName === null) return; // ยกเลิก
-                const trimmed = newName.trim();
-                if (!trimmed) { this.showToast('ชื่อหมวดหมู่ห้ามว่าง','warning'); return; }
-                if (trimmed === oldName) { this.showToast('ไม่มีการเปลี่ยนแปลง'); return; }
-                if (this.categories.includes(trimmed)) { this.showToast('มีหมวดหมู่นี้อยู่แล้ว','warning'); return; }
-
-                this.categories = this.categories.map(c => c === oldName ? trimmed : c);
-                this.messages = this.messages.map(m => (m.category === oldName ? { ...m, category: trimmed } : m));
-
-                this.saveToStorage();
-                this.updateCategoryOptions();
-                this.renderCategories();
-                this.renderMessages();
-                this.showToast(`เปลี่ยน "${oldName}" เป็น "${trimmed}" สำเร็จ`);
-            }
-
-            deleteCategory(name) {
-                this.deleteTarget = { type:'category', name };
-                document.getElementById('deleteMessage').textContent = `คุณแน่ใจหรือไม่ที่จะลบหมวดหมู่ "${name}"? ข้อความในหมวดนี้จะถูกตั้งเป็น "ไม่มีหมวดหมู่"`;
-                document.getElementById('deleteModal').classList.remove('hidden');
-            }
-            
-            // moveCategoryUp(index) {
-                if (index <= 0) return; // Can't move up if it's the first one
-                // Swap with the element above it
-                [this.categories[index], this.categories[index - 1]] = [this.categories[index - 1], this.categories[index]];
-                this.saveToStorage();
-                this.renderCategories();
-                this.updateCategoryOptions();
-            }
-
-            moveCategoryDown(index) {
-                if (index >= this.categories.length - 1) return; // Can't move down if it's the last one
-                // Swap with the element below it
-                [this.categories[index], this.categories[index + 1]] = [this.categories[index + 1], this.categories[index]];
-                this.saveToStorage();
-                this.renderCategories();
-                this.updateCategoryOptions();
-            }
-            // updateCategoryOptions() {
-                const selects = [document.getElementById('messageCategory'), document.getElementById('categoryFilter')];
-                // Sort categories before rendering them in dropdowns to match user's order
-                const sortedCategories = [...this.categories]; // Create a copy to be safe
-
-                selects.forEach((select, idx) => {
-                    const current = select.value;
-                    const defaultOption = idx === 0 ? '<option value="">เลือกหมวดหมู่</option>' : '<option value="">📂 ทุกหมวดหมู่</option>';
-                    // Use the sorted array to generate options
-                    select.innerHTML = defaultOption + sortedCategories.map(c => `<option value="${this.escapeHtml(c)}">${this.escapeHtml(c)}</option>`).join('');
-                    select.value = current;
-                });
-            }
-
-            // ---------- Delete confirm ----------
-            closeDeleteModal() {
-                document.getElementById('deleteModal').classList.add('hidden');
-                this.deleteTarget = null;
-            }
-
-            confirmDelete() {
-                if (!this.deleteTarget) return;
-
-                if (this.deleteTarget.type === 'message') {
-                    this.messages = this.messages.filter(m => m.id !== this.deleteTarget.id);
-                    this.renderMessages();
-                    this.showToast('ลบข้อความสำเร็จ');
-                } else if (this.deleteTarget.type === 'category') {
-                    const name = this.deleteTarget.name;
-                    this.categories = this.categories.filter(c => c !== name);
-                    this.messages = this.messages.map(m => (m.category === name ? { ...m, category: '' } : m));
-                    this.updateCategoryOptions();
-                    this.renderCategories();
-                    this.renderMessages();
-                    this.showToast('ลบหมวดหมู่สำเร็จ');
-                }
-
-                this.saveToStorage();
-                this.closeDeleteModal();
-            }
-
-            // ---------- Rendering ----------
-            renderMessages() {
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                const categoryFilter = document.getElementById('categoryFilter').value;
-
-                let filtered = this.messages.filter(m => {
-                    const matchesSearch = (m.content || '').toLowerCase().includes(searchTerm);
-                    const matchesCat = !categoryFilter || (m.category === categoryFilter);
-                    return matchesSearch && matchesCat;
-                });
-
-                const container = document.getElementById('messagesList');
-
-                if (filtered.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-12 text-gray-500">
-                            <div class="text-4xl mb-4">📝</div>
-                            <p>ไม่พบข้อความ</p>
-                        </div>`;
-                    return;
-                }
-
-                container.innerHTML = filtered.map(m => {
-                    const safeContent = this.escapeHtml(m.content);
-                    const copyPayload = safeContent.replace(/'/g, "\\'");
-                    return `
-                    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 fade-in">
-                        <div class="flex items-start justify-between mb-2">
-                            <div class="flex-1">
-                                <p class="text-gray-800 leading-relaxed whitespace-pre-wrap break-words">${safeContent}</p>
-                            </div>
-                            <div class="flex space-x-1 ml-2 shrink-0">
-                                <button onclick="messageManager.copyMessage('${copyPayload}')" class="text-green-600 hover:text-green-700 p-1" title="คัดลอก">📋</button>
-                                <button onclick='messageManager.openMessageModal(${JSON.stringify(m).replace(/"/g,"&quot;")})' class="text-blue-600 hover:text-blue-700 p-1" title="แก้ไข">✏️</button>
-                                <button onclick="messageManager.deleteMessage(${m.id})" class="text-red-600 hover:text-red-700 p-1" title="ลบ">🗑️</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-start text-xs text-gray-500">
-                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${this.escapeHtml(m.category || 'ไม่มีหมวดหมู่')}</span>
-                        </div>
-                    </div>`;
-                }).join('');
-            }
-            
-            // renderCategories() {
-                const container = document.getElementById('categoriesList');
-                if (this.categories.length === 0) {
-                    container.innerHTML = `<div class="text-gray-500 text-center py-6">ยังไม่มีหมวดหมู่</div>`;
-                    return;
-                }
-
-                container.innerHTML = this.categories.map((c, index) => {
-                    // Conditional rendering for up/down buttons
-                    const upButton = index > 0 
-                        ? `<button onclick="messageManager.moveCategoryUp(${index})" class="text-gray-500 hover:text-gray-800 p-1" title="เลื่อนขึ้น">🔼</button>`
-                        : `<span class="p-1 w-7"></span>`; // Placeholder for alignment
-                    
-                    const downButton = index < this.categories.length - 1
-                        ? `<button onclick="messageManager.moveCategoryDown(${index})" class="text-gray-500 hover:text-gray-800 p-1" title="เลื่อนลง">🔽</button>`
-                        : `<span class="p-1 w-7"></span>`; // Placeholder for alignment
-
-                    return `
-                    <div class="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                        <span class="text-gray-800 flex-1">${this.escapeHtml(c)}</span>
-                        <div class="flex gap-1 items-center">
-                            ${upButton}
-                            ${downButton}
-                            <button onclick="messageManager.editCategory('${this.escapeHtml(c).replace(/'/g,"\\'")}')" class="text-blue-600 hover:text-blue-800 p-1" title="แก้ไขชื่อ">✏️</button>
-                            <button onclick="messageManager.deleteCategory('${this.escapeHtml(c).replace(/'/g,"\\'")}')" class="text-red-600 hover:text-red-800 p-1" title="ลบหมวดหมู่">🗑️</button>
-                        </div>
-                    </div>
-                `}).join('');
-            }
-            // // ---------- Export / Import ----------
-            exportJSON() {
-                const data = {
-                    version: 2, 
-                    exportedAt: new Date().toISOString(),
-                    categories: this.categories,
-                    messages: this.messages.map(m => ({ id: m.id, content: m.content, category: m.category || '' }))
-                };
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const ts = this.getTimestampForFile();
-                a.href = url;
-                a.download = `snippet-backup-${ts}.json`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                URL.revokeObjectURL(url);
-                this.showToast('Export สำเร็จ (ดาวน์โหลดไฟล์แล้ว)');
-            }
-
-            async importJSON(event) {
-                const file = event.target.files?.[0];
-                event.target.value = ''; 
-                if (!file) return;
-
-                try {
-                    const text = await file.text();
-                    const json = JSON.parse(text);
-
-                    if (!Array.isArray(json.categories) || !Array.isArray(json.messages)) {
-                        this.showToast('ไฟล์ไม่ถูกต้อง: ต้องมี fields categories และ messages','error');
-                        return;
-                    }
-
-                    if (!confirm('ต้องการแทนที่ข้อมูลเดิมทั้งหมดด้วยไฟล์ที่นำเข้าใช่ไหม?')) {
-                        this.showToast('ยกเลิกการนำเข้า','info');
-                        return;
-                    }
-
-                    const uniqueCats = [...new Set(json.categories.filter(c => typeof c === 'string' && c.trim()))];
-
-                    const msgs = json.messages
-                        .filter(m => m && typeof m.content === 'string')
-                        .map(m => ({
-                            id: Number(m.id) || Date.now() + Math.floor(Math.random()*1000),
-                            content: String(m.content),
-                            category: typeof m.category === 'string' ? m.category : ''
-                        }));
-
-                    this.categories = uniqueCats;
-                    this.messages = msgs;
-
-                    this.saveToStorage();
-                    this.updateCategoryOptions();
-                    this.renderCategories();
-                    this.renderMessages();
-                    this.showToast('Import สำเร็จ');
-                } catch (e) {
-                    console.error(e);
-                    this.showToast('ไม่สามารถอ่านไฟล์ JSON ได้','error');
-                }
-            }
-
-            getTimestampForFile() {
-                const d = new Date();
-                const pad = (n) => String(n).padStart(2,'0');
-                return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-            }
-        }
-
-        // Initialize
-        const messageManager = new MessageManager();
-        window.messageManager = messageManager;
-    </script>
-</body>
-</html>
+                const newName
